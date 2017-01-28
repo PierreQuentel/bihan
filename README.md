@@ -54,7 +54,7 @@ The argument `dialog`
 
 The functions that are mapped to urls take a single argument, `dialog`.
 
-`dialog` has two main arguments, `request`, which holds the information sent
+`dialog` has two main attributes, `request`, which holds the information sent
 by the browser, and `response` which is used to send back information to the
 browser.
 
