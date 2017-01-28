@@ -62,14 +62,15 @@ browser.
 ----------------
 The attributes of _dialog.request_ are :
 
-- `dialog.request.url` : requested url (without query string).
+- `dialog.request.url` : the requested url (without query string).
 
-- `dialog.request.headers` : the http request headers sent by user agent.
+- `dialog.request.headers` : the http request headers sent by the user agent.
 
-- `dialog.request.encoding` : encoding used in request.
+- `dialog.request.encoding` : the encoding used in the request.
 
-- `dialog.request.cookies` : instance of http.cookies.SimpleCookie, holds 
-  the cookies sent by user agent.
+- `dialog.request.cookies` : instance of [http.cookies.SimpleCookie]
+  (https://docs.python.org/3/library/http.cookies.html), holds the cookies 
+  sent by the user agent.
 
 - if the request is sent with the GET method, or the POST method with
   enctype or content-type set to 'application/x-www-form-urlencoded' or 
