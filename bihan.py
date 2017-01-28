@@ -133,58 +133,6 @@ class Dialog:
         self.error = HttpError
 
 
-class Request:
-    
-    def __init__(self, obj):
-        self.request = obj.request
-        self.env = obj.env
-    
-    @property
-    def fields(self):
-        _fields = {}
-        # Get request fields from query string
-        qs_fields = cgi.parse_qs(self.env.get('QUERY_STRING',''), 
-            keep_blank_values=1)
-        
-        for key, value in qs_fields.items():
-            if key.endswith('[]'):
-                _fields[key[:-2]] = value
-            elif len(qs_fields[key])==1:
-                _fields[key] = value[0]
-            else:
-                _fields[key] = value
-
-        if self.request.method == 'GET':
-            return _fields
-
-        fp = self.env['wsgi.input']
-
-        # Update request fields from POST data
-        body = cgi.FieldStorage(fp, headers=self.request.headers,
-            environ=self.env)
-        print(body)
-
-        data = {}
-        for k in body.keys():
-            if isinstance(body[k],list): # several fields with same name
-                values = [x.value for x in body[k]]
-                if k.endswith('[]'):
-                    data[k[:-2]] = values
-                else:
-                    data[k] = values
-            else:
-                if body[k].filename: # file upload : don't read the value
-                    data[k] = body[k]
-                else:
-                    if k.endswith('[]'):
-                        data[k[:-2]] = [body[k].value]
-                    else:
-                        data[k] = body[k].value
-        _fields.update(data)
-        
-        return _fields
-        
-
 class application(http.server.SimpleHTTPRequestHandler):
 
     root = os.getcwd()
