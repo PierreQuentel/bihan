@@ -2,11 +2,11 @@
 bihan (small, in breton) is a minimalist web framework.
 
 Installation
-------------
+============
 ```pip install bihan```
 
 Hello World
------------
+===========
 Create a module (eg __home.py__) with
 
 ```python
@@ -28,7 +28,7 @@ _http://localhost:8000/index_ in the browser address bar, it shows the
 "Hello World" message.
 
 URL dispatching
----------------
+===============
 By default, bihan uses function names as urls : in the modules passed in the
 argument _modules_ of `application.run()`, all the callables whose name 
 doesn't start with an underscore are accessible by their name.
@@ -46,8 +46,8 @@ index.url = "/"
 
 will associate the url "/" to the function.
 
-The argument _dialog_
----------------------
+The argument `dialog`
+=====================
 
 The functions that are mapped to urls take a single argument, `dialog`.
 
@@ -55,50 +55,50 @@ The functions that are mapped to urls take a single argument, `dialog`.
 by the browser, and `response` which is used to send back information to the
 browser.
 
-_dialog.request_
-================
+`dialog.request`
+----------------
 The attributes of _dialog.request_ are :
 
-- dialog.request.url : requested url (without query string)
+- `dialog.request.url` : requested url (without query string).
 
-- dialog.request.headers : the http request headers sent by user agent
+- `dialog.request.headers` : the http request headers sent by user agent.
 
-- dialog.request.encoding : encoding used in request
+- `dialog.request.encoding` : encoding used in request.
 
-- dialog.request.cookies : instance of http.cookies.SimpleCookie, holds 
-the cookies sent by user agent
+- `dialog.request.cookies` : instance of http.cookies.SimpleCookie, holds 
+  the cookies sent by user agent.
 
 - if the request is sent with the GET method, or the POST method with
   enctype or content-type set to 'application/x-www-form-urlencoded' or 
   'multipart/...' :
 
-  - dialog.request.fields : a dictionary for key/values received 
-    either in the query string, or in the request body for POST 
-    requests. Keys and values are strings, not bytes
+  - `dialog.request.fields` : a dictionary for key/values received 
+    either in the query string, or in the request body for POST
+    requests. Keys and values are strings, not bytes.
 
 - else :
 
-  - dialog.request.raw : request body as bytes for requests of other types (eg
-    Ajax requests with JSON content)
+  - `dialog.request.raw` : request body as bytes for requests of other types (eg
+    Ajax requests with JSON content).
   
-  - dialog.request.json() : function with no argument that returns a
-    dictionary built as the parsing of request body 
+  - `dialog.request.json()` : function with no argument that returns a
+    dictionary built as the parsing of request body.
 
-_dialog.response_
-=================
-The attributes that can be set to _dialog.response_ are:
+`dialog.response`
+-----------------
+The attributes that can be set to `dialog.response` are:
 
-- dialog.response.headers : the HTTP response headers
+- `dialog.response.headers` : the HTTP response headers.
 
-- dialog.response.cookie : instance of http.cookies.SimpleCookie, used 
-  to set cookies to send to the user agent with the response
+- `dialog.response.cookie` : instance of http.cookies.SimpleCookie, used 
+  to set cookies to send to the user agent with the response.
 
-- dialog.response.encoding : Unicode encoding to use to convert the 
+- `dialog.response.encoding` : Unicode encoding to use to convert the 
   string returned by script functions into a bytestring. Defaults to 
   "utf-8".
 
-other attributes of _dialog_
-============================
+other attributes of `dialog`
+----------------------------
 - dialog.root : path of document root in the server file system
 
 - dialog.environ : WSGI environment variables
