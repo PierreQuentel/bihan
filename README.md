@@ -11,7 +11,7 @@ Create a module (eg __home.py__) with
 
 ```python
 def index(dialog):
-    return 'Hello World'
+    return "Hello World"
 ```
 
 and a script, __wsgi.py__
@@ -40,11 +40,14 @@ You can specify another url for the function by setting its attribute `url` :
 
 ```python
 def index(dialog):
-    return 'Hello World'
+    return "Hello World"
 index.url = "/"
 ```
 
 will associate the url "/" to the function.
+
+The return value of the function is the body of the response sent to the
+browser. If it is not a string, it is converted by `str()`.
 
 The argument `dialog`
 =====================
@@ -99,17 +102,17 @@ The attributes that can be set to `dialog.response` are:
 
 other attributes of `dialog`
 ----------------------------
-- dialog.root : path of document root in the server file system
+- `dialog.root` : path of document root in the server file system
 
-- dialog.environ : WSGI environment variables
+- `dialog.environ` : WSGI environment variables.
 
-- dialog.error : an exception to raise if the script wants to return an
-  HTTP error code, eg `raise dialog.error(404)`
+- `dialog.error` : an exception to raise if the script wants to return an
+  HTTP error code, eg `raise dialog.error(404)`.
 
-- dialog.redirection : an exception to raise if the script wants to 
+- `dialog.redirection` : an exception to raise if the script wants to 
   perform a temporary redirection (302) to a specified URL : 
-  `raise dialog.redirection(url)`
+  `raise dialog.redirection(url)`.
 
-- dialog.template(filename, **kw) : if the templating engine [patrom]
+- `dialog.template(filename, **kw)` : if the templating engine [patrom]
   (https://github.com/PierreQuentel/patrom) is installed, renders the template 
-  file at the location __templates/<filename>__ with the key/values in kw
+  file at the location __templates/<filename>__ with the key/values in `kw`.
