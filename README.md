@@ -65,7 +65,7 @@ The attributes of _dialog.request_ are :
 - `dialog.request.url` : the requested url (without query string).
 
 - `dialog.request.headers` : the http request headers sent by the user agent.
-  Instance of [email.message.Message](https://docs.python.org/3/library/email.message.html)
+  Instance of [email.message.Message](https://docs.python.org/3/library/email.message.html).
 
 - `dialog.request.encoding` : the encoding used in the request.
 
@@ -96,8 +96,9 @@ The attributes that can be set to `dialog.response` are:
 - `dialog.response.headers` : the HTTP response headers. Instance of
   [email.message.Message](https://docs.python.org/3/library/email.message.html)
 
-- `dialog.response.cookie` : instance of http.cookies.SimpleCookie, used 
-  to set cookies to send to the user agent with the response.
+- `dialog.response.cookie` : instance of [http.cookies.SimpleCookie]
+  (https://docs.python.org/3/library/http.cookies.html), used to set cookies 
+  to send to the user agent with the response.
 
 - `dialog.response.encoding` : Unicode encoding to use to convert the 
   string returned by script functions into a bytestring. Defaults to 
@@ -105,7 +106,7 @@ The attributes that can be set to `dialog.response` are:
 
 other attributes of `dialog`
 ----------------------------
-- `dialog.root` : path of document root in the server file system
+- `dialog.root` : path of document root in the server file system.
 
 - `dialog.environ` : WSGI environment variables.
 
