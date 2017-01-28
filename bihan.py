@@ -379,13 +379,13 @@ class application(http.server.SimpleHTTPRequestHandler):
                     except AttributeError:
                         importlib.reload(module)
         mapping = {}
-        for script in application.scripts:
-            for key in dir(script):
-                obj = getattr(script, key)
+        for module in application.modules:
+            for key in dir(module):
+                obj = getattr(module, key)
                 if callable(obj) and not key.startswith('_'):
                     url = obj.url if hasattr(obj, "url") else "/"+key
                     pattern = '^'+re.sub('<(.*?)>', r'(?P<\1>[^/]+?)', url)+'$'
-                    value = script.__file__+'/'+key
+                    value = module.__file__+'/'+key
                     mapping[pattern] = value
         return mapping
 
@@ -472,7 +472,7 @@ class application(http.server.SimpleHTTPRequestHandler):
         """Returns a string : the template at /templates/filename executed 
         with the data in kw
         """
-        from template import TemplateParser, TemplateError
+        from patrom import TemplateParser, TemplateError
         parser = TemplateParser()
         path = os.path.join(application.root, 'templates', filename)
         try:
@@ -506,10 +506,10 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.response.body = infile.read()
 
     @classmethod
-    def run(cls, port=8000, scripts=None, debug=True):
+    def run(cls, port=8000, modules=None, debug=True):
         application.debug = debug
         # scripts is a list of modules
-        application.scripts = scripts or []
+        application.modules = modules or []
         from wsgiref.simple_server import make_server
         httpd = make_server('localhost', port, application)
         print("Serving on port %s" %port)
