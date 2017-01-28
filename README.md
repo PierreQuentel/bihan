@@ -119,4 +119,4 @@ other attributes of `dialog`
 
 - `dialog.template(filename, **kw)` : if the templating engine [patrom]
   (https://github.com/PierreQuentel/patrom) is installed, renders the template 
-  file at the location __templates/<filename>__ with the key/values in `kw`.
+  file at the location __templates/filename__ with the key/values in `kw`.
