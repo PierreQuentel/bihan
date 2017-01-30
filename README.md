@@ -41,14 +41,14 @@ The _registered modules_ are determined inside the `with application.register`
 block. They are all the modules imported inside this block, including those
 that they may themselves import. 
 
-Only the modules whose source file in inside the application directory are 
+Only the modules whose source file is in inside the application directory are 
 registered (modules from the standard library for instance are not
 registered).
 
-To prevent a modules imported in the `with` block to be registered, put
+To prevent a module imported in the `with` block from being registered, put
 the line
 
-```
+```python
 __exclude__ = True
 ```
 
@@ -71,7 +71,7 @@ index.url = "/"
 
 will associate the url "/" to the function.
 
-If a modules defines a variable `__prefix__`, it is prepended to the url for
+If a module defines a variable `__prefix__`, it is prepended to the url for
 all the functions in the module :
 
 ```python
