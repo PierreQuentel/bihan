@@ -54,7 +54,6 @@ __exclude__ = True
 
 Mapping a url to a function in a registered module
 --------------------------------------------------
-
 By default, bihan uses function names as urls : all the functions whose name 
 doesn't start with an underscore are accessible by their name.
 
@@ -80,7 +79,23 @@ __prefix__ = "books"
 def show(dialog):
     ...
 ```
- will map the url _books/show_ to the function `show()`
+will map the url _books/show_ to the function `show()`
+
+Mapping control
+---------------
+bihan makes sure that a url matches only one callable in a _registered
+module_. Otherwise it raises a `RoutingError`, with a message giving the
+scripts and functions that define the same url.
+
+Application attributes and methods
+==================================
+
+- `application.debug` sets the debug mode. If `True`, all the modules are
+  reloaded at each request, so that changes made to the scripts are taken
+  into account and the mapping between urls and functions is reset.
+  Defaults to `True`.
+
+- `application.run([port])` starts the application on the specified port.
 
 
 Response body

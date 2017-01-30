@@ -63,21 +63,6 @@ is converted in bytes using dialog.response.encoding.
 Attributes of class Application :
 
     - root : document root. Defaults to current directory.
-    
-    - static : list of directories for static files. Defaults to subdirectory
-      "static" of document root.
-
-    - dispatch(mapping) : mapping maps url patterns to callables. If a url 
-      matches the pattern, the associated function will be executed. The 
-      pattern may include the form <name>, in this case dialog.request.fields 
-      has the key "name".
-      
-      For instance if mapping is 
-      
-          {'test/<book_id>': module.function}
-      
-      calling url 'test/3' will run module.function(dialog) with 
-      dialog.request.fields set to {'book_id': '3'}
 
 """
 
@@ -137,7 +122,6 @@ class application(http.server.SimpleHTTPRequestHandler):
 
     debug = True
     root = os.getcwd()
-    static = {'static': 'static'}
     patterns = {}
 
     def __init__(self, environ, start_response):
@@ -307,6 +291,8 @@ class application(http.server.SimpleHTTPRequestHandler):
                     self.done(304, io.BytesIO())
                     return
         ctype = self.guess_type(fs_path)
+        if ctype.startswith('text/'):
+            ctype += ";charset=utf-8"
         self.response.headers.set_type(ctype)
         self.response.headers['Content-length'] = str(os.fstat(f.fileno())[6])
         self.done(200,f)
