@@ -68,8 +68,6 @@ def index(dialog):
 index.url = "/"
 ```
 
-will associate the url "/" to the function.
-
 If a module defines a variable `__prefix__`, it is prepended to the url for
 all the functions in the module :
 
