@@ -135,10 +135,10 @@ class Dialog:
 
 class application(http.server.SimpleHTTPRequestHandler):
 
+    debug = True
     root = os.getcwd()
     static = {'static': 'static'}
     patterns = {}
-    config_file = os.path.join(root, 'config.json')
 
     def __init__(self, environ, start_response):
     
@@ -311,30 +311,44 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.response.headers['Content-length'] = str(os.fstat(f.fileno())[6])
         self.done(200,f)
 
-    def load_routes(self):
+    @classmethod
+    def load_routes(cls):
         """Returns a mapping between regular expressions and paths to 
         scripts and callables
         """
         # on debug mode, reload all modules in application folders
-        if application.debug:
+        if cls.debug:
             for name, module in sys.modules.items():
                 if name == "__main__":
                     continue
                 filename = getattr(module, "__file__", "")
-                if filename.startswith(application.root):
+                if filename.startswith(cls.root):
                     try:
                         imp.reload(module) # deprecated in version 3.4
                     except AttributeError:
                         importlib.reload(module)
         mapping = {}
-        for module in application.modules:
+        for module in cls.modules:
+            prefix = ''
+            if hasattr(module, '__prefix__'):
+                prefix = '/'+module.__prefix__.lstrip('/')
             for key in dir(module):
                 obj = getattr(module, key)
                 if callable(obj) and not key.startswith('_'):
                     url = obj.url if hasattr(obj, "url") else "/"+key
-                    pattern = '^'+re.sub('<(.*?)>', r'(?P<\1>[^/]+?)', url)+'$'
+                    url = prefix + url
+                    pattern = '^' + re.sub('<(.*?)>', r'(?P<\1>[^/]+?)', url) + '$'
                     value = module.__file__+'/'+key
-                    mapping[pattern] = value
+                    if pattern in mapping:
+                        msg = "duplicate url {}:\n - in {} line {}\n" \
+                            " - in {} line {}"
+                        obj2 = mapping[pattern][1]
+                        raise RoutingError(msg.format(url, 
+                            obj2.__code__.co_filename,
+                            obj2.__code__.co_firstlineno,
+                            obj.__code__.co_filename,
+                            obj.__code__.co_firstlineno))
+                    mapping[pattern] = value, obj
         return mapping
 
     def resolve(self, url):
@@ -345,7 +359,7 @@ class application(http.server.SimpleHTTPRequestHandler):
         elts = urllib.parse.unquote(url).lstrip('/').split('/')
 
         target, patterns = None, []
-        for pattern, func in self.load_routes().items():
+        for pattern, (func, _) in application.load_routes().items():
             mo = re.match(pattern, url, flags=re.I)
             if mo:
                 patterns.append(pattern)
@@ -453,11 +467,28 @@ class application(http.server.SimpleHTTPRequestHandler):
         infile.seek(0)
         self.response.body = infile.read()
 
+    class Register:
+        
+        def __enter__(self):
+            """Store list of imported modules when entering the "with" block
+            """
+            self.modules = list(sys.modules)
+        
+        def __exit__(self, *args):
+            """The modules that will be used to serve urls"""
+            application.modules = [mod for name, mod in sys.modules.items() 
+                if not name in self.modules
+                and hasattr(mod, '__file__')
+                and mod.__file__.startswith(os.getcwd())
+                and not getattr(mod, '__exclude__', False)
+            ]
+            application.load_routes()
+
+    register = Register()
+
     @classmethod
-    def run(cls, port=8000, modules=None, debug=True):
+    def run(cls, port=8000, debug=True):
         application.debug = debug
-        # scripts is a list of modules
-        application.modules = modules or []
         from wsgiref.simple_server import make_server
         httpd = make_server('localhost', port, application)
         print("Serving on port %s" %port)

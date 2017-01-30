@@ -18,9 +18,11 @@ and a script, __wsgi.py__
 
 ```python
 from bihan import application
-import home
 
-application.run(modules=[home])
+with application.register:
+    import home
+
+application.run()
 ```
 
 This starts a built-in web server on port 8000. Enter 
@@ -29,8 +31,31 @@ _http://localhost:8000/index_ in the browser address bar, it shows the
 
 URL dispatching
 ===============
-By default, bihan uses function names as urls : in the modules passed in the
-argument _modules_ of `application.run()`, all the callables whose name 
+bihan maps urls to callables (usually functions) in the _registered modules_.
+
+Registered modules
+------------------
+The name "module" in this paragraph is used both for modules and packages.
+
+The _registered modules_ are determined inside the `with application.register`
+block. They are all the modules imported inside this block, including those
+that they may themselves import. 
+
+Only the modules whose source file in inside the application directory are 
+registered (modules from the standard library for instance are not
+registered).
+
+To prevent a modules imported in the `with` block to be registered, put
+the line
+
+```
+__exclude__ = True
+```
+
+Mapping a url to a function in a registered module
+--------------------------------------------------
+
+By default, bihan uses function names as urls : all the functions whose name 
 doesn't start with an underscore are accessible by their name.
 
 For instance, the function `index()` in module __home__ is mapped to the url
@@ -45,6 +70,21 @@ index.url = "/"
 ```
 
 will associate the url "/" to the function.
+
+If a modules defines a variable `__prefix__`, it is prepended to the url for
+all the functions in the module :
+
+```python
+__prefix__ = "books"
+
+def show(dialog):
+    ...
+```
+ will map the url _books/show_ to the function `show()`
+
+
+Response body
+=============
 
 The return value of the function is the body of the response sent to the
 browser. If it is not a string, it is converted by `str()`.
