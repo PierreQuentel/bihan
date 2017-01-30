@@ -346,7 +346,7 @@ class application(http.server.SimpleHTTPRequestHandler):
 
         target, patterns = None, []
         for pattern, func in self.load_routes().items():
-            mo = re.match(pattern, url)
+            mo = re.match(pattern, url, flags=re.I)
             if mo:
                 patterns.append(pattern)
                 if target is not None:
