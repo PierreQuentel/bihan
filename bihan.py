@@ -273,9 +273,8 @@ class application(http.server.SimpleHTTPRequestHandler):
                     pattern = re.sub('<(.*?)>', r'(?P<\1>[^/]+?)', url)
                     pattern = "^" + pattern +"$"
                     if pattern in mapping:
-                        msg = "duplicate url {}:\n - in {} line {}\n" \
-                            " - in {} line {}"
-                        obj2 = mapping[pattern][1]
+                        msg = 'duplicate url "{}":' +"\n - in {} line {}" * 2
+                        obj2 = mapping[pattern]
                         raise RoutingError(msg.format(url, 
                             obj2.__code__.co_filename, 
                             obj2.__code__.co_firstlineno,

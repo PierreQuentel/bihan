@@ -173,3 +173,17 @@ other attributes of `dialog`
 - `dialog.template(filename, **kw)` : if the templating engine [patrom]
   (https://github.com/PierreQuentel/patrom) is installed, renders the template 
   file at the location __templates/filename__ with the key/values in `kw`.
+  
+Smart URLs
+==========
+If the url includes parts of the form `<x>`, the value matching `x` we be
+available as one the request fields.
+
+For instance :
+
+```python
+def show(dialog):
+    return "showing record #{}".format(dialog.request.fields['num'])
+index.url = "/show/<num>"
+```
+
