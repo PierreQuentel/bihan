@@ -1,69 +1,5 @@
-"""Script server handling GET and POST requests, HTTP redirection
-
-Runs Python functions defined in scripts, with one argument representing the
-dialog (request+response) :
-
-    1. dialog.request : information sent by user agent to server
-    
-      - dialog.request.url : requested url (without query string)
-
-      - dialog.request.headers : the http request headers sent by user agent
-      
-      - dialog.request.encoding : encoding used in request
-
-      - dialog.request.cookies : instance of http.cookies.SimpleCookie, holds 
-        the cookies sent by user agent
-
-      - if the request is sent with the GET method, or the POST method with
-        enctype or content-type set to 'application/x-www-form-urlencoded' or 
-        'multipart/...' :
-
-          - dialog.request.fields : a dictionary for key/values received 
-            either in the query string, or in the request body for POST 
-            requests. Keys and values are strings, not bytes
-
-      - else :
-
-          - dialog.request.raw : for requests of other types (eg Ajax requests 
-            with JSON content), request body as bytes
-          
-          - dialog.request.json() : function with no argument that returns a
-            dictionary built as the parsing of request body 
-
-    2. dialog.response : data set by script
-    
-      - dialog.response.headers : the HTTP response headers
-    
-      - dialog.response.cookie : instance of http.cookies.SimpleCookie, used 
-        to set cookies to send to the user agent with the response
-
-      - dialog.response.encoding : Unicode encoding to use to convert the 
-        string returned by script functions into a bytestring. Defaults to 
-        "utf-8".
-
-    3. variables, exceptions and functions used in the script
-    
-      - dialog.root : path of document root in the server file system
-
-      - dialog.environ : WSGI environment variables
-    
-      - dialog.error : an exception to raise if the script wants to return an
-        HTTP error code : raise dialog.error(404)
-
-      - dialog.redirection : an exception to raise if the script wants to 
-        perform a temporary redirection (302) to a specified URL : 
-        raise dialog.redirection(url)
-      
-      - dialog.template(filename, **kw) : renders the template file at
-        templates/<filename> with the key/values in kw
-
-The response body is the return value of the function. If it is a string, it
-is converted in bytes using dialog.response.encoding.
-
-Attributes of class Application :
-
-    - root : document root. Defaults to current directory.
-
+"""Minimalist Python web server engine.
+Documentation at https://github.com/PierreQuentel/bihan
 """
 
 import sys
@@ -74,14 +10,6 @@ import re
 import io
 import traceback
 import datetime
-import string
-import types
-import collections
-import random
-import tokenize
-
-import html.parser
-
 import cgi
 import urllib.parse
 import http.cookies
@@ -130,30 +58,30 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.start_response = start_response
 
         # Set attributes for logging
-        path = self.env['PATH_INFO']
-        if self.env['QUERY_STRING']:
-            path += '?'+self.env['QUERY_STRING']
+        path = self.env["PATH_INFO"]
+        if self.env["QUERY_STRING"]:
+            path += "?"+self.env["QUERY_STRING"]
         
-        self.request_version = self.env['SERVER_PROTOCOL']
-        self.requestline = '%s %s %s' %(self.env['REQUEST_METHOD'],
+        self.request_version = self.env["SERVER_PROTOCOL"]
+        self.requestline = "{} {} {}".format(self.env["REQUEST_METHOD"],
             path, self.request_version)
-        self.client_address = [self.env['REMOTE_ADDR'],
-            self.env.get('REMOTE_PORT', self.env['SERVER_PORT'])]
+        self.client_address = [self.env["REMOTE_ADDR"],
+            self.env.get("REMOTE_PORT", self.env["SERVER_PORT"])]
 
         # Initialise attribute "request" from data sent by user agent
         self.request = request = Message()
-        request.url = self.env['PATH_INFO']
-        request.method = self.env['REQUEST_METHOD']
+        request.url = self.env["PATH_INFO"]
+        request.method = self.env["REQUEST_METHOD"]
         
         for key in self.env:
-            if key=='HTTP_COOKIE':
+            if key=="HTTP_COOKIE":
                 request.cookies = http.cookies.SimpleCookie(self.env[key])
-            elif key.startswith('HTTP_'):
+            elif key.startswith("HTTP_"):
                 request.headers[key[5:]] = self.env[key]
-            elif key.upper() == 'CONTENT_LENGTH':
-                request.headers['Content-Length'] = self.env[key]
-            elif key.upper() == 'CONTENT_TYPE':
-                request.headers['Content-Type'] = self.env[key]
+            elif key.upper() == "CONTENT_LENGTH":
+                request.headers["Content-Length"] = self.env[key]
+            elif key.upper() == "CONTENT_TYPE":
+                request.headers["Content-Type"] = self.env[key]
 
         # Initialise attribute "response"
         self.response = Message()
@@ -169,14 +97,33 @@ class application(http.server.SimpleHTTPRequestHandler):
             self.get_request_fields()
             self.handle()
         except:
-            import traceback
             out = io.StringIO()
             traceback.print_exc(file=out)
-            self.response.headers['Content-type'] = "text/plain"
+            self.response.headers.set_type("text/plain")
             self.response.body = out.getvalue().encode(self.response.encoding)
 
         self.start_response(str(self.status), self.response_headers())
         yield self.response.body
+
+    class Register:
+        
+        def __enter__(self):
+            """Store list of imported modules when entering the "with" block
+            """
+            self.modules = list(sys.modules)
+        
+        def __exit__(self, *args):
+            """Store the modules that will be used to serve urls"""
+            application.modules = [mod for name, mod in sys.modules.items() 
+                if not name in self.modules
+                and hasattr(mod, "__file__")
+                and mod.__file__.startswith(os.getcwd())
+                and not getattr(mod, "__exclude__", False)
+            ]
+            # run load_routes to check if there are duplicate urls
+            application.load_routes()
+
+    register = Register()
 
     def get_request_fields(self):
         """Set self.request.fields, a dictionary indexed by field names
@@ -187,41 +134,41 @@ class application(http.server.SimpleHTTPRequestHandler):
         request.fields = {}
 
         # Get request fields from query string
-        fields = cgi.parse_qs(self.env.get('QUERY_STRING',''), 
+        fields = cgi.parse_qs(self.env.get("QUERY_STRING", ""), 
             keep_blank_values=1)
         
         for key in fields:
-            if key.endswith('[]'):
+            if key.endswith("[]"):
                 request.fields[key[:-2]] = fields[key]
-            elif len(fields[key])==1:
+            elif len(fields[key]) == 1:
                 request.fields[key] = fields[key][0]
             else:
                 request.fields[key] = fields[key]
 
-        if request.method in ['POST', 'PUT', 'DELETE']:
+        if request.method in ["POST", "PUT", "DELETE"]:
 
             # Get encoding of request data
-            charset = 'utf-8'
+            charset = "utf-8"
             for key in request.headers:
-                mo = re.search('charset\s*=(.*)$', request.headers[key])
+                mo = re.search("charset\s*=(.*)$", request.headers[key])
                 if mo:
                     charset = mo.groups()[0]
                     break
             request.encoding = charset
 
-            fp = self.env['wsgi.input']
+            fp = self.env["wsgi.input"]
 
             has_keys = True
-            if 'content-type' in request.headers:
-                ctype, pdict = cgi.parse_header(request.headers['content-type'])
-                has_keys = ctype == 'application/x-www-form-urlencoded' or \
-                    ctype.startswith('multipart/')
+            if "Content-Type" in request.headers:
+                ctype, pdict = cgi.parse_header(request.headers["Content-Type"])
+                has_keys = ctype == "application/x-www-form-urlencoded" or \
+                    ctype.startswith("multipart/")
 
             # If data is not structured with key and value (eg JSON content),
             # only read raw data and set attribute "raw" and "json" of request 
             # object
             if not has_keys:
-                length = int(request.headers['content-length'])
+                length = int(request.headers["Content-Length"])
                 request.raw = fp.read(length)
                 def _json():
                     return json.loads(request.raw.decode(charset))
@@ -230,7 +177,7 @@ class application(http.server.SimpleHTTPRequestHandler):
 
             # Update request fields from POST data
             body = cgi.FieldStorage(fp, headers=request.headers,
-                environ={'REQUEST_METHOD':'POST'})
+                environ={"REQUEST_METHOD": "POST"})
 
             data = {}
             for k in body.keys():
@@ -253,26 +200,26 @@ class application(http.server.SimpleHTTPRequestHandler):
     def handle(self):
         """Process the data received"""
         response = self.response
-        self.elts = urllib.parse.urlparse(self.env['PATH_INFO']+
-            '?'+self.env['QUERY_STRING'])
+        self.elts = urllib.parse.urlparse(self.env["PATH_INFO"]+
+            "?"+self.env["QUERY_STRING"])
         self.url = self.elts[2]
-        response.headers.add_header("Content-type",'text/html') # default
+        response.headers.add_header("Content-Type", "text/html") # default
 
         kind, arg = self.resolve(self.url)
         if kind=='file':
             if not os.path.exists(arg):
-                return self.send_error(404, 'File not found', 
-                    'No file matching {}'.format(self.url))
+                return self.send_error(404, "File not found", 
+                    "No file matching {}".format(self.url))
             return self.send_static(arg)
         
         func, kw = arg
         self.request.fields.update(kw)
 
         # Run function
-        return self.run_script(func)
+        return self.render(func)
 
     def send_static(self, fs_path):
-        """Send the content of a file in a static directory"""
+        """Send the content of a file"""
         try:
             f = open(fs_path,'rb')
         except IOError:
@@ -291,11 +238,11 @@ class application(http.server.SimpleHTTPRequestHandler):
                     self.done(304, io.BytesIO())
                     return
         ctype = self.guess_type(fs_path)
-        if ctype.startswith('text/'):
+        if ctype.startswith("text/"):
             ctype += ";charset=utf-8"
         self.response.headers.set_type(ctype)
-        self.response.headers['Content-length'] = str(os.fstat(f.fileno())[6])
-        self.done(200,f)
+        self.response.headers["Content-Length"] = str(os.fstat(f.fileno())[6])
+        self.done(200, f)
 
     @classmethod
     def load_routes(cls):
@@ -315,90 +262,84 @@ class application(http.server.SimpleHTTPRequestHandler):
                         importlib.reload(module)
         mapping = {}
         for module in cls.modules:
-            prefix = ''
-            if hasattr(module, '__prefix__'):
-                prefix = '/'+module.__prefix__.lstrip('/')
+            prefix = ""
+            if hasattr(module, "__prefix__"):
+                prefix = "/"+module.__prefix__.lstrip("/")
             for key in dir(module):
                 obj = getattr(module, key)
-                if callable(obj) and not key.startswith('_'):
+                if callable(obj) and not key.startswith("_"):
                     url = obj.url if hasattr(obj, "url") else "/"+key
                     url = prefix + url
-                    pattern = '^' + re.sub('<(.*?)>', r'(?P<\1>[^/]+?)', url) + '$'
-                    value = module.__file__+'/'+key
+                    pattern = re.sub('<(.*?)>', r'(?P<\1>[^/]+?)', url)
+                    pattern = "^" + pattern +"$"
                     if pattern in mapping:
                         msg = "duplicate url {}:\n - in {} line {}\n" \
                             " - in {} line {}"
                         obj2 = mapping[pattern][1]
                         raise RoutingError(msg.format(url, 
-                            obj2.__code__.co_filename,
+                            obj2.__code__.co_filename, 
                             obj2.__code__.co_firstlineno,
                             obj.__code__.co_filename,
                             obj.__code__.co_firstlineno))
-                    mapping[pattern] = value, obj
+                    mapping[pattern] = obj
         return mapping
 
     def resolve(self, url):
-        """Combine url and the routes defined for the application to return 
-        # a file path, function name and additional arguments.
+        """If url matches a route defined for the application, return the
+        tuple ('func', (function_object, arguments)) where function_object is 
+        the function to call and arguments is a dictionary for patterns such 
+        as url/<arg>.
+        Otherwise return the tuple ('file', path) where path is built from the
+        application root and the parts in url.
         """
         # Split url in elements separated by /
-        elts = urllib.parse.unquote(url).lstrip('/').split('/')
+        elts = urllib.parse.unquote(url).lstrip("/").split("/")
 
         target, patterns = None, []
-        for pattern, (func, _) in application.load_routes().items():
+        for pattern, obj in application.load_routes().items():
             mo = re.match(pattern, url, flags=re.I)
             if mo:
                 patterns.append(pattern)
                 if target is not None:
-                    # If more than one pattern matches the url, refuse to guess
-                    msg = 'url %s matches at least 2 patterns : %s'
-                    raise DispatchError(msg %(url, patterns))
-                target = (func, mo.groupdict())
+                    # exception if more than one pattern matches the url
+                    msg = "url {} matches at least 2 patterns : {}"
+                    raise DispatchError(msg.format(url, patterns))
+                target = (obj, mo.groupdict())
         if target is not None:
             return 'func', target
 
         # finally, try a path in the file system
         return 'file', os.path.join(self.root, *elts)
 
-    def run_script(self, path):
-        """Run the function specified by string path
-        path has the form module/callable
-        module is a path to a Python script
+    def render(self, func):
+        """Run the function and send its result
         """
-        module, call = path.rsplit('/', 1)
-        path = os.path.join(self.root, *module.split('/'))
-        with open(path, encoding="utf-8") as fobj:
-            src = fobj.read()
-        ns = {}
-        initial_modules = list(sys.modules)
-        exec(src, ns)
-        func = ns[call]
         try:
             # run function with Dialog(self) as positional argument
             result = func(Dialog(self))
         except HttpRedirection as url:
-            self.response.headers['Location'] = url
-            return self.done(302,io.BytesIO())
+            self.response.headers["Location"] = url
+            return self.done(302, io.BytesIO())
         except HttpError as err:
             return self.done(err.args[0], io.BytesIO())
         except: # Other exception : print traceback
             result = io.StringIO()
             traceback.print_exc(file=result)
             result = result.getvalue() # string
-            return self.send_error(500, 'Server error', result)
+            return self.send_error(500, "Server error", result)
 
         # Get response encoding
         encoding = self.response.encoding
-        if not "charset" in self.response.headers["Content-type"]:
+        if not "charset" in self.response.headers["Content-Type"]:
             if encoding is not None:
-                ctype = self.response.headers["Content-type"]
-                self.response.headers.replace_header("Content-type",
-                    ctype + "; charset=%s" %encoding)
+                ctype = self.response.headers["Content-Type"]
+                self.response.headers.replace_header("Content-Type",
+                    ctype + "; charset={}".format(encoding))
 
         # Build response body as a bytes stream
         output = io.BytesIO()
         
-        if self.request.method != 'HEAD':
+        if self.request.method != "HEAD":
             if isinstance(result, bytes):
                 output.write(result)
             elif isinstance(result, str):
@@ -408,76 +349,57 @@ class application(http.server.SimpleHTTPRequestHandler):
                     msg = io.StringIO()
                     traceback.print_exc(file=msg)
                     return self.done(500,
-                        io.BytesIO(msg.getvalue().encode('ascii')))
+                        io.BytesIO(msg.getvalue().encode("ascii")))
             else:
                 output.write(str(result).encode(encoding))
 
-        response_code = getattr(self.response, 'status', 200)
-        self.response.headers['Content-length'] = output.tell()
+        response_code = getattr(self.response, "status", 200)
+        self.response.headers["Content-Length"] = output.tell()
         self.done(response_code, output)
 
     def template(self, filename, **kw):
-        """Returns a string : the template at /templates/filename executed 
-        with the data in kw
+        """If the template engine patrom is installed, use it to render the
+        template file with the specified key/values
         """
         from patrom import TemplateParser, TemplateError
         parser = TemplateParser()
-        path = os.path.join(application.root, 'templates', filename)
+        path = os.path.join(application.root, "templates", filename)
         try:
             result = parser.render(path, **kw)
             self.response.headers.set_type("text/html")
         except TemplateError as exc:
             result = str(exc)
-            self.response.headers.set_type('text/plain')
+            self.response.headers.set_type("text/plain")
         return result
 
-    def send_error(self, code, expl, msg=''):
-        self.status = '%s %s' %(code, expl)
-        self.response.headers.set_type('text/plain')
+    def send_error(self, code, expl, msg=""):
+        self.status = "{} {}".format(code, expl)
+        self.response.headers.set_type("text/plain")
         self.response.body = msg.encode(self.response.encoding)
 
     def response_headers(self):
-        headers = [(k, str(v)) for (k,v) in self.response.headers.items()]
+        headers = [(k, str(v)) for (k, v) in self.response.headers.items()]
         for morsel in self.response.cookies.values():
-            headers.append(('Set-Cookie', morsel.output(header='').lstrip()))
+            headers.append(("Set-Cookie", morsel.output(header="").lstrip()))
         return headers
 
     def done(self, code, infile):
         """Send response, cookies, response headers and the data read from 
         infile
         """
-        self.status = '%s %s' %(code, 
+        self.status = "{} {}".format(code, 
             http.server.BaseHTTPRequestHandler.responses[code])
         if code == 500:
-            self.response.headers.set_type('text/plain')
+            self.response.headers.set_type("text/plain")
         infile.seek(0)
         self.response.body = infile.read()
-
-    class Register:
-        
-        def __enter__(self):
-            """Store list of imported modules when entering the "with" block
-            """
-            self.modules = list(sys.modules)
-        
-        def __exit__(self, *args):
-            """The modules that will be used to serve urls"""
-            application.modules = [mod for name, mod in sys.modules.items() 
-                if not name in self.modules
-                and hasattr(mod, '__file__')
-                and mod.__file__.startswith(os.getcwd())
-                and not getattr(mod, '__exclude__', False)
-            ]
-            application.load_routes()
-
-    register = Register()
 
     @classmethod
     def run(cls, port=8000, debug=True):
         application.debug = debug
         from wsgiref.simple_server import make_server
-        httpd = make_server('localhost', port, application)
-        print("Serving on port %s" %port)
+        httpd = make_server("localhost", port, application)
+        print("Serving on port {}".format(port))
         httpd.serve_forever()
 
 if __name__ == '__main__':
