@@ -9,14 +9,14 @@ with open('README.rst', encoding='utf-8') as fobj:
 setup(
     name='bihan',
 
-    version='0.0.1',
+    version='0.0.4',
 
     description='bihan is a Python web tool',
     
     long_description = LONG_DESCRIPTION,
 
     # The project's main homepage.
-    url='http://brython.info',
+    url='https://github.com/PierreQuentel/bihan',
 
     # Author details
     author='Pierre Quentel',

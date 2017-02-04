@@ -37,20 +37,22 @@ class Dialog:
     They have attributes taken from the application instance."""
 
     def __init__(self, obj):
+        self.environ = obj.env
+        self.error = HttpError
+        self.redirection = HttpRedirection
         self.request = obj.request
         self.response = obj.response
         self.root = obj.root
-        self.environ = obj.env
         self.template = obj.template
-        self.redirection = HttpRedirection
-        self.error = HttpError
 
 
 class application(http.server.SimpleHTTPRequestHandler):
 
     debug = True
-    root = os.getcwd()
+    modules = []
     patterns = {}
+    root = os.getcwd()
+    static = {'/static': os.path.join(os.getcwd(), 'static')}
 
     def __init__(self, environ, start_response):
     
@@ -112,7 +114,7 @@ class application(http.server.SimpleHTTPRequestHandler):
             """
             self.modules = list(sys.modules)
         
-        def __exit__(self, *args):
+        def __exit__(self, exc_type, exc_val, exc_tb):
             """Store the modules that will be used to serve urls"""
             application.modules = [mod for name, mod in sys.modules.items() 
                 if not name in self.modules
@@ -121,7 +123,7 @@ class application(http.server.SimpleHTTPRequestHandler):
                 and not getattr(mod, "__exclude__", False)
             ]
             # run load_routes to check if there are duplicate urls
-            application.load_routes()
+            application.load_routes(False)
 
     register = Register()
 
@@ -206,6 +208,10 @@ class application(http.server.SimpleHTTPRequestHandler):
         response.headers.add_header("Content-Type", "text/html") # default
 
         kind, arg = self.resolve(self.url)
+        
+        if kind is None:
+            return self.send_error(404, "File not found", 
+                "No file matching {}".format(self.url))
         if kind=='file':
             if not os.path.exists(arg):
                 return self.send_error(404, "File not found", 
@@ -245,14 +251,16 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.done(200, f)
 
     @classmethod
-    def load_routes(cls):
+    def load_routes(cls, debug=None):
         """Returns a mapping between regular expressions and paths to 
         scripts and callables
         """
         # on debug mode, reload all modules in application folders
-        if cls.debug:
+        if debug is None:
+            debug = application.debug
+        if debug:
             for name, module in sys.modules.items():
-                if name == "__main__":
+                if name in ['__main__', application.__module__]:
                     continue
                 filename = getattr(module, "__file__", "")
                 if filename.startswith(cls.root):
@@ -260,6 +268,7 @@ class application(http.server.SimpleHTTPRequestHandler):
                         imp.reload(module) # deprecated in version 3.4
                     except AttributeError:
                         importlib.reload(module)
+
         mapping = {}
         for module in cls.modules:
             prefix = ""
@@ -307,8 +316,12 @@ class application(http.server.SimpleHTTPRequestHandler):
         if target is not None:
             return 'func', target
 
-        # finally, try a path in the file system
-        return 'file', os.path.join(self.root, *elts)
+        # if url is not registered, try a path in the file system
+        head = '/' + elts[0]
+        if head in self.static:
+            return 'file', os.path.join(self.static[head], *elts[1:])
+        
+        return None, None
 
     def render(self, func):
         """Run the function and send its result
@@ -394,10 +407,10 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.response.body = infile.read()
 
     @classmethod
-    def run(cls, port=8000, debug=True):
+    def run(cls, host="localhost", port=8000, debug=True):
         application.debug = debug
         from wsgiref.simple_server import make_server
-        httpd = make_server("localhost", port, application)
+        httpd = make_server(host, port, application)
         print("Serving on port {}".format(port))
         httpd.serve_forever()
 
