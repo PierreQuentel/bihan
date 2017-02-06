@@ -79,6 +79,19 @@ def show(dialog):
 ```
 will map the url _books/show_ to the function `show()`
 
+Smart URLs
+----------
+If the url includes parts of the form `<x>`, the value matching `x` we be
+available as one the request fields.
+
+For instance :
+
+```python
+def show(dialog):
+    return "showing record #{}".format(dialog.request.fields['num'])
+index.url = "/show/<num>"
+```
+
 Mapping control
 ---------------
 bihan makes sure that a url matches only one callable in a _registered
@@ -92,9 +105,18 @@ Application attributes and methods
   reloaded at each request, so that changes made to the scripts are taken
   into account and the mapping between urls and functions is reset.
   Defaults to `True`.
+  
+- `application.root` is a path in the server file system. It will be
+  available in scripts as `dialog.root`.
 
-- `application.run([port])` starts the application on the specified port.
+- `application.run([host, [port]])` starts the application on the specified 
+  host and port. _host_ defaults to `"localhost"` and _port_ to `8000`.
 
+- `application.static` is a dictionary mapping paths of the form "/path" and 
+  directories in the server file system. It it used to serve static files 
+  (HTML pages, images, Javascript programs, etc.). By default, the dictionary 
+  maps "/static" to the folder __static__ in the server directory.
+  
 
 Response body
 =============
@@ -174,16 +196,3 @@ other attributes of `dialog`
   (https://github.com/PierreQuentel/patrom) is installed, renders the template 
   file at the location __templates/filename__ with the key/values in `kw`.
   
-Smart URLs
-==========
-If the url includes parts of the form `<x>`, the value matching `x` we be
-available as one the request fields.
-
-For instance :
-
-```python
-def show(dialog):
-    return "showing record #{}".format(dialog.request.fields['num'])
-index.url = "/show/<num>"
-```
-
