@@ -135,7 +135,7 @@ class application(http.server.SimpleHTTPRequestHandler):
         request.fields = {}
 
         # Get request fields from query string
-        fields = cgi.parse_qs(self.env.get("QUERY_STRING", ""), 
+        fields = urllib.parse.parse_qs(self.env.get("QUERY_STRING", ""), 
             keep_blank_values=1)
         
         for key in fields:
