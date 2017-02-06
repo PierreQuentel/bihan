@@ -50,7 +50,6 @@ class application(http.server.SimpleHTTPRequestHandler):
 
     debug = True
     modules = []
-    patterns = {}
     root = os.getcwd()
     static = {'/static': os.path.join(os.getcwd(), 'static')}
 
@@ -407,8 +406,7 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.response.body = infile.read()
 
     @classmethod
-    def run(cls, host="localhost", port=8000, debug=True):
-        application.debug = debug
+    def run(cls, host="localhost", port=8000):
         from wsgiref.simple_server import make_server
         httpd = make_server(host, port, application)
         print("Serving on port {}".format(port))
