@@ -17,6 +17,7 @@ import http.server
 import email.utils
 import email.message
 import json
+import threading
 
 
 class HttpRedirection(Exception):pass
@@ -50,11 +51,12 @@ class application(http.server.SimpleHTTPRequestHandler):
 
     debug = True
     modules = []
+    mtime = {}
     root = os.getcwd()
     static = {'/static': os.path.join(os.getcwd(), 'static')}
 
     def __init__(self, environ, start_response):
-    
+        
         self.env = environ
         self.start_response = start_response
 
@@ -106,6 +108,7 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.start_response(str(self.status), self.response_headers())
         yield self.response.body
 
+
     class Register:
         
         def __enter__(self):
@@ -121,8 +124,10 @@ class application(http.server.SimpleHTTPRequestHandler):
                 and mod.__file__.startswith(os.getcwd())
                 and not getattr(mod, "__exclude__", False)
             ]
-            # run load_routes to check if there are duplicate urls
-            application.load_routes(False)
+            # initialize routes
+            application.mtime = {mod.__file__: os.stat(mod.__file__).st_mtime
+                for mod in application.modules}
+            application.load_routes()
 
     register = Register()
 
@@ -204,6 +209,7 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.elts = urllib.parse.urlparse(self.env["PATH_INFO"]+
             "?"+self.env["QUERY_STRING"])
         self.url = self.elts[2]
+
         response.headers.add_header("Content-Type", "text/html") # default
 
         kind, arg = self.resolve(self.url)
@@ -249,26 +255,10 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.response.headers["Content-Length"] = str(os.fstat(f.fileno())[6])
         self.done(200, f)
 
+        
     @classmethod
-    def load_routes(cls, debug=None):
-        """Returns a mapping between regular expressions and paths to 
-        scripts and callables
-        """
-        # on debug mode, reload all modules in application folders
-        if debug is None:
-            debug = application.debug
-        if debug:
-            for name, module in sys.modules.items():
-                if name in ['__main__', application.__module__]:
-                    continue
-                filename = getattr(module, "__file__", "")
-                if filename.startswith(cls.root):
-                    try:
-                        imp.reload(module) # deprecated in version 3.4
-                    except AttributeError:
-                        importlib.reload(module)
-
-        mapping = {}
+    def load_routes(cls):
+        cls.routes = {}
         for module in cls.modules:
             prefix = ""
             if hasattr(module, "__prefix__"):
@@ -277,19 +267,33 @@ class application(http.server.SimpleHTTPRequestHandler):
                 obj = getattr(module, key)
                 if callable(obj) and not key.startswith("_"):
                     url = obj.url if hasattr(obj, "url") else "/"+key
-                    url = prefix + url
+                    url = "/"+(prefix + url).lstrip("/")
                     pattern = re.sub('<(.*?)>', r'(?P<\1>[^/]+?)', url)
                     pattern = "^" + pattern +"$"
-                    if pattern in mapping:
+                    if pattern in cls.routes:
                         msg = 'duplicate url "{}":' +"\n - in {} line {}" * 2
-                        obj2 = mapping[pattern]
+                        obj2 = cls.routes[pattern]
                         raise RoutingError(msg.format(url, 
                             obj2.__code__.co_filename, 
                             obj2.__code__.co_firstlineno,
                             obj.__code__.co_filename,
                             obj.__code__.co_firstlineno))
-                    mapping[pattern] = obj
-        return mapping
+                    cls.routes[pattern] = obj
+
+    @classmethod
+    def check_changes(cls):
+        """If debug mode is set, check every 3 seconds if one of the source 
+        files for the registered modules has changed. If so, restart the 
+        application"""
+        for mod in cls.modules:
+            mtime = os.stat(mod.__file__).st_mtime
+            if cls.mtime[mod.__file__] != mtime:
+                print('changed', mod.__file__)
+                python = sys.executable
+                os.execl(python, python, * sys.argv)
+                
+        t = threading.Timer(3.0, cls.check_changes)
+        t.start()
 
     def resolve(self, url):
         """If url matches a route defined for the application, return the
@@ -303,7 +307,9 @@ class application(http.server.SimpleHTTPRequestHandler):
         elts = urllib.parse.unquote(url).lstrip("/").split("/")
 
         target, patterns = None, []
-        for pattern, obj in application.load_routes().items():
+        if application.debug:
+            application.load_routes()
+        for pattern, obj in application.routes.items():
             mo = re.match(pattern, url, flags=re.I)
             if mo:
                 patterns.append(pattern)
@@ -408,9 +414,11 @@ class application(http.server.SimpleHTTPRequestHandler):
     @classmethod
     def run(cls, host="localhost", port=8000):
         from wsgiref.simple_server import make_server
-        httpd = make_server(host, port, application)
+        cls.httpd = make_server(host, port, application)
         print("Serving on port {}".format(port))
-        httpd.serve_forever()
+        if cls.debug:
+            cls.check_changes()
+        cls.httpd.serve_forever(poll_interval=0.5)
 
 if __name__ == '__main__':
     application.run(port=8000)
