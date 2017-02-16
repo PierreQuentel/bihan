@@ -47,6 +47,21 @@ class Dialog:
         self.template = obj.template
 
 
+class ErrorModule:
+    """Store information about a module that causes application
+    restarting to fail"""
+    
+    def __init__(self, exc_val, exc_tb):
+        self.exc_val = exc_val
+        self.__file__ = getattr(exc_val, 'filename', None)
+        lineno = getattr(exc_val, 'lineno', None)
+        if self.__file__ is None:
+            while exc_tb is not None:
+                self.__file__ = exc_tb.tb_frame.f_code.co_filename
+                lineno = exc_tb.tb_frame.f_lineno
+                exc_tb = exc_tb.tb_next
+        self.exc_msg = "{} line {}\n{}".format(self.__file__, lineno, exc_val)
+
 class application(http.server.SimpleHTTPRequestHandler):
 
     debug = True
@@ -94,7 +109,7 @@ class application(http.server.SimpleHTTPRequestHandler):
 
     def __iter__(self):
         """Iteration expected by the WSGI protocol. Calls start_response
-        then yields the response body
+        then yields the response body.
         """
         try:
             self.get_request_fields()
@@ -115,19 +130,30 @@ class application(http.server.SimpleHTTPRequestHandler):
             """Store list of imported modules when entering the "with" block
             """
             self.modules = list(sys.modules)
+            self.modules.remove("__main__")
         
         def __exit__(self, exc_type, exc_val, exc_tb):
             """Store the modules that will be used to serve urls"""
-            application.modules = [mod for name, mod in sys.modules.items() 
-                if not name in self.modules
-                and hasattr(mod, "__file__")
-                and mod.__file__.startswith(os.getcwd())
-                and not getattr(mod, "__exclude__", False)
-            ]
+            application.error = exc_val is not None
+            if exc_type is not None:
+                application.modules = [ErrorModule(exc_val, exc_tb)]
+            else:
+                application.modules = [mod for name, mod in sys.modules.items() 
+                    if not name in self.modules
+                    and hasattr(mod, "__file__")
+                    and mod.__file__.startswith(os.getcwd())
+                ]
+            if application.debug:
+                # on debug mode, store time of last modification of files
+                application.mtime = {
+                    mod.__file__: os.stat(mod.__file__).st_mtime
+                    for mod in application.modules
+                }
             # initialize routes
-            application.mtime = {mod.__file__: os.stat(mod.__file__).st_mtime
-                for mod in application.modules}
             application.load_routes()
+
+            # always return True even if there was an exception in the block
+            return True
 
     register = Register()
 
@@ -205,6 +231,10 @@ class application(http.server.SimpleHTTPRequestHandler):
             
     def handle(self):
         """Process the data received"""
+        if application.error:
+            # an exception was raised when loading modules
+            exc_msg = application.modules[0].exc_msg.encode("utf-8")
+            return self.done(500, io.BytesIO(exc_msg))
         response = self.response
         self.elts = urllib.parse.urlparse(self.env["PATH_INFO"]+
             "?"+self.env["QUERY_STRING"])
@@ -260,6 +290,9 @@ class application(http.server.SimpleHTTPRequestHandler):
     def load_routes(cls):
         cls.routes = {}
         for module in cls.modules:
+            # don't load routes from modules with __exclude__ set
+            if not getattr(module, "__expose__", True):
+                continue
             prefix = ""
             if hasattr(module, "__prefix__"):
                 prefix = "/"+module.__prefix__.lstrip("/")
@@ -285,12 +318,13 @@ class application(http.server.SimpleHTTPRequestHandler):
         """If debug mode is set, check every 3 seconds if one of the source 
         files for the registered modules has changed. If so, restart the 
         application"""
+        python = sys.executable
+        app_script = '"{}"'.format(sys.argv[0]) # quotes if script has spaces
         for mod in cls.modules:
             mtime = os.stat(mod.__file__).st_mtime
             if cls.mtime[mod.__file__] != mtime:
                 print('changed', mod.__file__)
-                python = sys.executable
-                os.execl(python, python, * sys.argv)
+                os.execl(python, python, app_script)
                 
         t = threading.Timer(3.0, cls.check_changes)
         t.start()
@@ -341,8 +375,11 @@ class application(http.server.SimpleHTTPRequestHandler):
             return self.done(err.args[0], io.BytesIO())
         except: # Other exception : print traceback
             result = io.StringIO()
-            traceback.print_exc(file=result)
-            result = result.getvalue() # string
+            if application.debug:
+                traceback.print_exc(file=result)
+                result = result.getvalue() # string
+            else:
+                result = "Server error"
             return self.send_error(500, "Server error", result)
 
         # Get response encoding
