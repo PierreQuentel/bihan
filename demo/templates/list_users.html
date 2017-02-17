@@ -1,0 +1,91 @@
+<!doctype html>
+
+<html>
+<head>
+<py include="head.html"/>
+</head>
+
+<body>
+
+<py include="navbar.html"/>
+
+<div class="row">
+
+<div class="col-xs-1">
+</div>
+
+<div class="col-xs-6">
+
+<div class="row">
+  <div class="col-xs-4 col-xs-offset-1"><strong>email</strong></div>
+  <div class="col-xs-2"><strong>role</strong></div>
+</div>
+
+<py code="for user in users:">
+
+  <div class="row">
+    <div class="col-xs-4 col-xs-offset-1"><py expr="user['mail']"/></div>
+    <div class="col-xs-2"><py expr="user['role']"/></div>
+    <py code="if user['role'] != 'admin':">
+        <form action="del_user" method="post">
+        <input type="hidden" name="mail" attrs="value=user['mail']">
+        <div class="col-xs-2">
+          <button class="btn btn-primary" title="Delete user">
+            <i class="glyphicon glyphicon-remove"></i>
+          </button>
+        </div>
+        </form>
+    </py>
+  </div>
+
+</py>
+
+<form action="/add_user" method="post">
+  <div class="row">
+
+    <div class="col-xs-4 col-xs-offset-1">
+
+      <div class="form-group">
+        <input type="email" class="form-control" id="mail" name="mail" 
+            placeholder="mail"
+            required>
+      </div>
+    
+    </div>
+    
+    <div class="col-xs-2">
+      <div class="form-group">
+        <select class="form-control" name="role">
+          <option value="admin">admin
+          <option value="manager">manager
+        </select>
+      </div>
+    </div>
+
+    <div class="col-xs-1">
+      <button type="submit" class="btn btn-primary" title="Add user">
+          <i class="glyphicon glyphicon-plus"></i>      
+      </button>
+    </div>
+
+  </div>
+</form>
+
+
+</div>
+</div>
+
+<py include="scripts.html"/>
+
+<script>
+
+$(".glyphicon-remove").each(function(){
+    $(this).css("cursor", "default")
+})
+
+$(".glyphicon-remove").on("click", function(){
+    $(this).closest("form").submit()
+})
+</script>
+</body>
+</html>

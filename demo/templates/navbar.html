@@ -1,0 +1,92 @@
+<nav class="navbar navbar-default">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="/">bihan demo</a>
+    </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" >
+    
+      <ul class="nav navbar-nav">
+          <li><a style="font-size:2em;padding-left: 6em;" href="#"><py expr="title"/></a>
+      </ul>
+
+
+        <form class="navbar-form navbar-right" id="form-annee" role="search">
+
+          <span id="user" class="nav-text"></span>
+
+          <i class="glyphicon glyphicon-user" id="login"></i>
+
+        </form>      
+
+
+    </div><!-- /.navbar-collapse -->
+
+  </div><!-- /.container-fluid -->
+</nav>
+
+<div class="modal fade" tabindex="-1" role="dialog" id="loginbox">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title">Authentification</h4>
+      </div>
+      <div class="modal-body">
+        <form method="post" action="authent" id="authent-form">
+          <div class="form-group">
+            <label for="mail">Adresse mail</label>
+            <input type="email" class="form-control" id="mail" name="mail">
+          </div>
+          <div class="form-group">
+            <label for="password">Mot de passe</label>
+            <input type="password" class="form-control" id="password" name="password">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-primary" id="authent-submit">Soumettre</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+
+<div class="modal fade" tabindex="-1" role="dialog" id="loginmgmt">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title">Authentification</h4>
+      </div>
+      <div class="modal-body">
+        <form method="get" action="logout">
+          <div class="form-group">
+            <input type="submit" class="btn btn-primary" value="Se déconnecter">
+          </div>
+        </form>        
+        
+        <form method="post" action="reset_pw" id="reset-pw">
+          <input type="hidden" class="form-control" name="mail">
+          <div class="form-group">
+            <label for="password">Changer le mot de passe</label>
+            <input type="password" class="form-control" id="password" name="password"
+                pattern=".{6,}" required title="au moins 6 caractères">
+          </div>
+          <div class="form-group">
+            <input type="submit" class="btn btn-primary" value="Modifier">
+          </div>
+        </form>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
