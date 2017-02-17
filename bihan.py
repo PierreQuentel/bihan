@@ -64,9 +64,11 @@ class ErrorModule:
 
 class application(http.server.SimpleHTTPRequestHandler):
 
+    __expose__ = False
     debug = True
-    modules = []
-    mtime = {}
+    error = None
+    modules = [sys.modules["__main__"]]
+    mtime = {modules[0].__file__: os.stat(modules[0].__file__).st_mtime}
     root = os.getcwd()
     static = {'/static': os.path.join(os.getcwd(), 'static')}
 
@@ -298,7 +300,8 @@ class application(http.server.SimpleHTTPRequestHandler):
                 prefix = "/"+module.__prefix__.lstrip("/")
             for key in dir(module):
                 obj = getattr(module, key)
-                if callable(obj) and not key.startswith("_"):
+                if callable(obj) and not key.startswith("_") and \
+                        getattr(obj, '__expose__', True):
                     url = obj.url if hasattr(obj, "url") else "/"+key
                     url = "/"+(prefix + url).lstrip("/")
                     pattern = re.sub('<(.*?)>', r'(?P<\1>[^/]+?)', url)
