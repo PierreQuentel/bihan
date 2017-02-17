@@ -318,13 +318,15 @@ class application(http.server.SimpleHTTPRequestHandler):
         """If debug mode is set, check every 3 seconds if one of the source 
         files for the registered modules has changed. If so, restart the 
         application"""
-        python = sys.executable
-        app_script = '"{}"'.format(sys.argv[0]) # quotes if script has spaces
         for mod in cls.modules:
             mtime = os.stat(mod.__file__).st_mtime
             if cls.mtime[mod.__file__] != mtime:
                 print('changed', mod.__file__)
-                os.execl(python, python, app_script)
+                python = sys.executable
+                args = sys.argv
+                if " " in args[0]:
+                    args[0] = '"' + args[0] + '"'
+                os.execl(python, python, *args)
                 
         t = threading.Timer(3.0, cls.check_changes)
         t.start()
