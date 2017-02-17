@@ -49,7 +49,7 @@ To prevent a module imported in the `with` block from being registered, put
 the line
 
 ```python
-__exclude__ = True
+__expose__ = False
 ```
 
 Mapping a url to a function in a registered module
@@ -78,6 +78,9 @@ def show(dialog):
     ...
 ```
 will map the url _books/show_ to the function `show()`
+
+If a callable must not be made accessible, set its attribute `__expose__` to
+`False`.
 
 Smart URLs
 ----------
@@ -109,8 +112,9 @@ Application attributes and methods
 - `application.root` is a path in the server file system. It will be
   available in scripts as `dialog.root`.
 
-- `application.run([host, [port]])` starts the application on the specified 
-  host and port. _host_ defaults to `"localhost"` and _port_ to `8000`.
+- `application.run([host, [port]])` starts the application on the development
+  server, on the specified host and port. _host_ defaults to `"localhost"` 
+  and _port_ to `8000`.
 
 - `application.static` is a dictionary mapping paths of the form "/path" and 
   directories in the server file system. It it used to serve static files 
@@ -196,3 +200,12 @@ other attributes of `dialog`
   (https://github.com/PierreQuentel/patrom) is installed, renders the template 
   file at the location __templates/filename__ with the key/values in `kw`.
   
+Development server
+==================
+The built-in development server checks the changes made to all the modules
+used by the application and located in the application directory. If the
+source code of one of these modules is changed, the application is restarted.
+
+If an exception happens when reloading the registered modules, the server 
+doesn't crash, but the exception is stored and will be shown as the result of
+the next request.
