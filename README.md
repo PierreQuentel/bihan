@@ -189,12 +189,12 @@ other attributes of `dialog`
 
 - `dialog.environ` : WSGI environment variables.
 
-- `dialog.error` : an exception to raise if the script wants to return an
-  HTTP error code, eg `raise dialog.error(404)`.
+- `dialog.error` : used if the script wants to return an HTTP error code, eg 
+  `return dialog.error(404)`.
 
-- `dialog.redirection` : an exception to raise if the script wants to 
-  perform a temporary redirection (302) to a specified URL : 
-  `raise dialog.redirection(url)`.
+- `dialog.redirection` : used if the script wants to perform a temporary
+  redirection (302) to a specified URL : 
+  `return dialog.redirection(url)`.
 
 - `dialog.template(filename, **kw)` : if the templating engine [patrom]
   (https://github.com/PierreQuentel/patrom) is installed, renders the template 

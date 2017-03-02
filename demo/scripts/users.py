@@ -72,13 +72,18 @@ def authent(dialog):
             if h == user["pw"]:
                 dialog.response.cookies["user"] = mail
                 dialog.response.cookies["user"]["expires"] = 10*24*3600
-                raise dialog.redirection("/")
-    return render_template('authent_failed.html')
+                return dialog.redirection("/")
+    return dialog.template('info.html', 
+        title="Permission refused",
+        message="Permission refused")
 
     
 def create_users_db(dialog):
     if utils.has_users():
-        return "la base existe déjà"
+        return dialog.template("info.html",
+            title="Error",
+            message="Database already exists"
+        )
     mail = dialog.request.fields['mail']
     password = dialog.request.fields['password']
     salt = utils.gen_salt()
@@ -90,7 +95,7 @@ def create_users_db(dialog):
         json.dump([{"mail": mail, "salt": salt, "pw": m, "role": "admin"}], 
             out, indent=4)
     
-    raise dialog.redirection("/")
+    return dialog.redirection("/")
 
 @requires_level("admin")
 def del_user(dialog):
@@ -112,7 +117,7 @@ def del_user(dialog):
 def logout(dialog):
     dialog.response.cookies["user"] = ""
     dialog.response.cookies["user"]["expires"] = 0
-    raise dialog.redirection("/")
+    return dialog.redirection("/")
 
 
 @requires_level("admin")
@@ -125,9 +130,9 @@ def list_users(dialog):
 
 
 @requires_level("manager")
-def reset_pw():
-    mail = request.form["mail"]
-    password = request.form["password"]
+def reset_pw(dialog):
+    mail = dialog.request.fields["mail"]
+    password = dialog.request.fields["password"]
 
     salt = utils.gen_salt()
     pw = salt+password
@@ -142,10 +147,12 @@ def reset_pw():
             with open(utils.users_store, "w", encoding="utf-8") as out:
                 json.dump(users, out, indent=4) 
     
-            return render_template("info.html",
-                message = "Le mot de passe a été modifié"
+            return dialog.template("info.html",
+                title="",
+                message = "Password changed"
             )   
 
-    return render_template("info.html",
-        message="pas d'utilisateur {}".format(mail)
+    return dialog.template("info.html",
+        title="Error",
+        message="Unknown user: {}".format(mail)
         )

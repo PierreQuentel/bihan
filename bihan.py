@@ -62,6 +62,7 @@ class ErrorModule:
                 exc_tb = exc_tb.tb_next
         self.exc_msg = "{} line {}\n{}".format(self.__file__, lineno, exc_val)
 
+
 class application(http.server.SimpleHTTPRequestHandler):
 
     __expose__ = False
@@ -324,7 +325,6 @@ class application(http.server.SimpleHTTPRequestHandler):
         for mod in cls.modules:
             mtime = os.stat(mod.__file__).st_mtime
             if cls.mtime[mod.__file__] != mtime:
-                print('changed', mod.__file__)
                 python = sys.executable
                 args = sys.argv
                 if " " in args[0]:
@@ -368,17 +368,16 @@ class application(http.server.SimpleHTTPRequestHandler):
         return None, None
 
     def render(self, func):
-        """Run the function and send its result
-        """
+        """Run the function and send its result."""
         try:
             # run function with Dialog(self) as positional argument
             result = func(Dialog(self))
-        except HttpRedirection as url:
-            self.response.headers["Location"] = url
-            return self.done(302, io.BytesIO())
-        except HttpError as err:
-            return self.done(err.args[0], io.BytesIO())
-        except: # Other exception : print traceback
+            if isinstance(result, HttpRedirection):
+                self.response.headers["Location"] = result.args[0]
+                return self.done(302, io.BytesIO())
+            elif isinstance(result, HttpError):
+                return self.done(result.args[0], io.BytesIO())
+        except: # exception : print traceback
             result = io.StringIO()
             if application.debug:
                 traceback.print_exc(file=result)
