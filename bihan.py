@@ -336,6 +336,10 @@ class application(http.server.SimpleHTTPRequestHandler):
                             obj.__code__.co_filename,
                             obj.__code__.co_firstlineno))
                     cls.routes[pattern] = obj
+                    if (key == "index" and not hasattr(obj, "url") 
+                            and "^/$" not in cls.routes):
+                        # route path "/" to function "index"
+                        cls.routes["^/$"] = obj
 
     @classmethod
     def check_changes(cls):
