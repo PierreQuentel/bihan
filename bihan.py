@@ -18,6 +18,7 @@ import email.utils
 import email.message
 import json
 import threading
+import types
 
 
 class HttpRedirection(Exception):pass
@@ -65,7 +66,6 @@ class ErrorModule:
 
 class application(http.server.SimpleHTTPRequestHandler):
 
-    __expose__ = False
     debug = True
     error = None
     modules = [sys.modules["__main__"]]
@@ -98,7 +98,7 @@ class application(http.server.SimpleHTTPRequestHandler):
             if key=="HTTP_COOKIE":
                 request.cookies = http.cookies.SimpleCookie(self.env[key])
             elif key.startswith("HTTP_"):
-                request.headers[key[5:]] = self.env[key]
+                request.headers[key[5:].replace('_', '-')] = self.env[key]
             elif key.upper() == "CONTENT_LENGTH":
                 request.headers["Content-Length"] = self.env[key]
             elif key.upper() == "CONTENT_TYPE":
@@ -123,7 +123,12 @@ class application(http.server.SimpleHTTPRequestHandler):
             self.response.headers.set_type("text/plain")
             self.response.body = out.getvalue().encode(self.response.encoding)
 
-        self.start_response(str(self.status), self.response_headers())
+        # 2nd argument of start_response is a list of (key, value) pairs
+        headers = [(k, str(v)) for (k, v) in self.response.headers.items()]
+        for morsel in self.response.cookies.values():
+            headers.append(("Set-Cookie", morsel.output(header="").lstrip()))
+
+        self.start_response(str(self.status), headers)
         yield self.response.body
 
 
@@ -266,25 +271,39 @@ class application(http.server.SimpleHTTPRequestHandler):
         """Send the content of a file"""
         try:
             f = open(fs_path,'rb')
+            fs = os.fstat(f.fileno())
         except IOError:
             return self.send_error(404, "File not found",
                 "No file found for given url")
         # Use browser cache if possible
         if "If-Modified-Since" in self.request.headers:
-            ims = email.utils.parsedate(
-                self.request.headers["If-Modified-Since"])
-            if ims is not None:
-                ims_datetime = datetime.datetime(*ims[:7])
-                ims_dtstring = ims_datetime.strftime("%d %b %Y %H:%M:%S")
-                last_modif = datetime.datetime.utcfromtimestamp(
-                    os.stat(fs_path).st_mtime).strftime("%d %b %Y %H:%M:%S")
-                if last_modif == ims_dtstring:
-                    self.done(304, io.BytesIO())
-                    return
+            # compare If-Modified-Since and time of last file modification
+            try:
+                ims = email.utils.parsedate_to_datetime(
+                    self.request.headers["If-Modified-Since"])
+            except (TypeError, IndexError, OverflowError, ValueError):
+                # ignore ill-formed values
+                pass
+            else:
+                if ims.tzinfo is None:
+                    # obsolete format with no timezone, cf.
+                    # https://tools.ietf.org/html/rfc7231#section-7.1.1.1
+                    ims = ims.replace(tzinfo=datetime.timezone.utc)
+                if ims.tzinfo is datetime.timezone.utc:
+                    # compare to UTC datetime of last modification
+                    last_modif = datetime.datetime.fromtimestamp(
+                        fs.st_mtime, datetime.timezone.utc)
+                    # remove microseconds, like in If-Modified-Since
+                    last_modif = last_modif.replace(microsecond=0)
+                    
+                    if last_modif <= ims:
+                        f.close()
+                        return self.done(304, io.BytesIO())
         ctype = self.guess_type(fs_path)
         if ctype.startswith("text/"):
             ctype += ";charset=utf-8"
         self.response.headers.set_type(ctype)
+        self.response.headers["Last-Modified"] = self.date_time_string(fs.st_mtime)
         self.response.headers["Content-Length"] = str(os.fstat(f.fileno())[6])
         self.done(200, f)
 
@@ -298,13 +317,14 @@ class application(http.server.SimpleHTTPRequestHandler):
                 continue
             prefix = ""
             if hasattr(module, "__prefix__"):
-                prefix = "/"+module.__prefix__.lstrip("/")
+                prefix = "/" + module.__prefix__.lstrip("/")
             for key in dir(module):
                 obj = getattr(module, key)
-                if callable(obj) and not key.startswith("_") and \
-                        getattr(obj, '__expose__', True):
-                    url = obj.url if hasattr(obj, "url") else "/"+key
-                    url = "/"+(prefix + url).lstrip("/")
+                if (type(obj) is types.FunctionType 
+                        and not key.startswith("_") 
+                        and getattr(obj, '__expose__', True)):
+                    url = obj.url if hasattr(obj, "url") else "/" + key
+                    url = "/" + (prefix + url).lstrip("/")
                     pattern = re.sub('<(.*?)>', r'(?P<\1>[^/]+?)', url)
                     pattern = "^" + pattern +"$"
                     if pattern in cls.routes:
@@ -434,12 +454,6 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.status = "{} {}".format(code, expl)
         self.response.headers.set_type("text/plain")
         self.response.body = msg.encode(self.response.encoding)
-
-    def response_headers(self):
-        headers = [(k, str(v)) for (k, v) in self.response.headers.items()]
-        for morsel in self.response.cookies.values():
-            headers.append(("Set-Cookie", morsel.output(header="").lstrip()))
-        return headers
 
     def done(self, code, infile):
         """Send response, cookies, response headers and the data read from 
