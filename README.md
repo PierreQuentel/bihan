@@ -7,20 +7,13 @@ Installation
 
 Hello World
 ===========
-Create a module (eg __home.py__) with
-
-```python
-def index(dialog):
-    return "Hello World"
-```
-
-and a script, __wsgi.py__
+Create a script, __wsgi.py__
 
 ```python
 from bihan import application
 
-with application.register:
-    import home
+def index(dialog):
+    return "Hello World"
 
 application.run()
 ```
@@ -31,19 +24,25 @@ _http://localhost:8000/index_ in the browser address bar, it shows the
 
 URL dispatching
 ===============
-bihan maps urls to callables (usually functions) in the _registered modules_.
 
 Registered modules
 ------------------
-The name "module" in this paragraph is used both for modules and packages.
+bihan maps urls to functions in the _registered modules_ ("module" in this
+paragraph is used both for modules and packages).
 
-The _registered modules_ are determined inside the `with application.register`
-block. They are all the modules imported inside this block, including those
-that they may themselves import. 
+The main module is always registered. To register other modules, they must be
+imported in the main module inside a context manager :
+
+```python
+with application.register:
+    import mymodule
+```
+
+If `mymodule` imports other modules, they are also registered.
 
 Only the modules whose source file is in inside the application directory are 
-registered (modules from the standard library for instance are not
-registered).
+registered : modules from the standard library for instance are not
+registered.
 
 To prevent a module imported in the `with` block from being registered, put
 the line
