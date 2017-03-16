@@ -28,8 +28,9 @@ Registered modules
 bihan maps urls to functions in the _registered modules_ ("module" in this
 paragraph is used both for modules and packages).
 
-The registered modules are the main module, and all the modules in the 
-application directory that are imported in the main module.
+The registered modules are the main module, and all the modules _in the 
+application directory_ (ie not from the standard library or third-party)
+that are imported in the main module.
 
 For instance, if the main module is
 
@@ -37,7 +38,9 @@ For instance, if the main module is
 import datetime
 from bihan import application
 
+# menu is a module in the same directory as this script
 import menu
+# scripts is a package, also in the same directory
 from scripts import views
 
 def index(dialog):
@@ -49,8 +52,8 @@ application.run()
 
 then modules `menu` and `views` are registered, but not `datetime`.
 
-If a module must be imported in the main module but must not be registered,
-put the line :
+If a module is imported in the main module but must not be registered, put
+this line at the beginning :
 
 ```python
 __expose__ = False
@@ -61,19 +64,19 @@ Mapping a url to a function in a registered module
 By default, bihan uses function names as urls : all the functions whose name 
 doesn't start with an underscore are accessible by their name.
 
-For instance, the function `index()` in module __home__ is mapped to the url
-_/index_.
+For instance, a function `users()` in a registered module is mapped to the url
+_/users_.
 
 You can specify another url for the function by setting its attribute `url` :
 
 ```python
-def index(dialog):
-    return "Hello World"
-index.url = "/"
+def users(dialog):
+    return "Here is a list of users"
+users.url = "/show_users"
 ```
 
-If a module defines a variable `__prefix__`, it is prepended to the url for
-all the functions in the module :
+If a registered module defines a variable `__prefix__`, it is prepended to the
+url for all the functions in the module :
 
 ```python
 __prefix__ = "books"
@@ -83,7 +86,7 @@ def show(dialog):
 ```
 will map the url _books/show_ to the function `show()`
 
-To prevent a function from being accessible, set its attribute `__expose__` to
+If a function must not be accessible, set its attribute `__expose__` to
 `False`.
 
 Smart URLs
