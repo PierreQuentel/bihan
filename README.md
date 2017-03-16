@@ -50,7 +50,8 @@ def index(dialog):
 application.run()
 ```
 
-then modules `menu` and `views` are registered, but not `datetime`.
+then modules `menu` and `views` are registered, but not `datetime` because it
+is in the standard library.
 
 If a module is imported in the main module but must not be registered, put
 this line at the beginning :
@@ -117,7 +118,7 @@ def show(dialog):
 index.url = "/show/<num>"
 ```
 
-This function is called for urls like __/show/76__, and the value (76) is
+This function is called for urls like _/show/76_, and the value (76) is
 available in the function body as `dialog.request.fields["num"]`.
 
 Mapping control
@@ -134,17 +135,17 @@ Application attributes and methods
   into account and the mapping between urls and functions is reset.
   Defaults to `True`.
   
-- `application.root` is a path in the server file system. It will be
-  available in scripts as `dialog.root`.
+- `application.root` is a path in the server file system. It is available in
+  scripts as `dialog.root`. Defaults to the application directory.
 
 - `application.run([host, [port]])` starts the application on the development
   server, on the specified host and port. _host_ defaults to `"localhost"` 
   and _port_ to `8000`.
 
-- `application.static` is a dictionary mapping paths of the form "/path" and 
+- `application.static` is a dictionary mapping paths of the form _/path_ to 
   directories in the server file system. It it used to serve static files 
   (HTML pages, images, Javascript programs, etc.). By default, the dictionary 
-  maps "/static" to the folder __static__ in the server directory.
+  maps _/static_ to the folder __static__ in the server directory.
   
 
 Response body
@@ -173,13 +174,13 @@ The attributes of _dialog.request_ are :
 
 - `dialog.request.encoding` : the encoding used in the request.
 
-- `dialog.request.cookies` : instance of [http.cookies.SimpleCookie]
-  (https://docs.python.org/3/library/http.cookies.html), holds the cookies 
-  sent by the user agent.
+- `dialog.request.cookies` : instance of 
+  [http.cookies.SimpleCookie](https://docs.python.org/3/library/http.cookies.html),
+  holds the cookies sent by the user agent.
 
 - if the request is sent with the GET method, or the POST method with
-  enctype or content-type set to 'application/x-www-form-urlencoded' or 
-  'multipart/...' :
+  enctype or content-type set to "application/x-www-form-urlencoded" or 
+  "multipart/..." :
 
   - `dialog.request.fields` : a dictionary for key/values received either in
     the query string, or in the request body for POST requests, or in named 
@@ -201,9 +202,9 @@ The attributes that can be set to `dialog.response` are:
 - `dialog.response.headers` : the HTTP response headers. Instance of
   [email.message.Message](https://docs.python.org/3/library/email.message.html)
 
-- `dialog.response.cookie` : instance of [http.cookies.SimpleCookie]
-  (https://docs.python.org/3/library/http.cookies.html), used to set cookies 
-  to send to the user agent with the response.
+- `dialog.response.cookie` : instance of
+  [http.cookies.SimpleCookie](https://docs.python.org/3/library/http.cookies.html),
+  used to set cookies  to send to the user agent with the response.
 
 - `dialog.response.encoding` : Unicode encoding to use to convert the 
   string returned by script functions into a bytestring. Defaults to 
@@ -222,9 +223,10 @@ other attributes of `dialog`
   redirection (302) to a specified URL : 
   `return dialog.redirection(url)`.
 
-- `dialog.template(filename, **kw)` : if the templating engine [patrom]
-  (https://github.com/PierreQuentel/patrom) is installed, renders the template
-  file at the location __templates/filename__ with the key/values in `kw`.
+- `dialog.template(filename, **kw)` : if the templating engine 
+  [patrom](https://github.com/PierreQuentel/patrom) is installed, renders the
+  template file at the location __templates/filename__ with the key/values in
+  `kw`.
 
 Development server
 ==================
