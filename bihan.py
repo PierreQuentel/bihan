@@ -45,6 +45,7 @@ class Dialog:
         self.request = obj.request
         self.response = obj.response
         self.root = obj.root
+        self.routes = obj.routes
         self.template = obj.template
 
 
@@ -64,12 +65,38 @@ class ErrorModule:
         self.exc_msg = "{} line {}\n{}".format(self.__file__, lineno, exc_val)
 
 
+class ImportTracker:
+
+    _imported = set(["__main__"])
+    modules = []
+ 
+    def find_module(self, fullname, path=None):
+        self._imported.add(fullname)
+        return None
+
+    def imported(self):
+        if self.modules:
+            return self.modules, self.mtime
+        self.modules = modules = [sys.modules["__main__"]]
+        self.mtime = {}
+        for fullname in self._imported:
+            module = sys.modules.get(fullname)
+            if (module and hasattr(module, "__file__")
+                    and module.__file__.startswith(os.getcwd())):
+                modules.append(module)
+        for module in modules:
+            self.mtime[module.__file__] = os.stat(module.__file__).st_mtime
+        return modules, self.mtime
+
+tracker = ImportTracker()
+
+sys.meta_path.insert(0, tracker)
+
 class application(http.server.SimpleHTTPRequestHandler):
 
     debug = True
     error = None
-    modules = [sys.modules["__main__"]]
-    mtime = {modules[0].__file__: os.stat(modules[0].__file__).st_mtime}
+    modules = []
     root = os.getcwd()
     static = {'/static': os.path.join(os.getcwd(), 'static')}
 
@@ -131,40 +158,6 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.start_response(str(self.status), headers)
         yield self.response.body
 
-
-    class Register:
-        
-        def __enter__(self):
-            """Store list of imported modules when entering the "with" block
-            """
-            self.modules = list(sys.modules)
-            self.modules.remove("__main__")
-        
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            """Store the modules that will be used to serve urls"""
-            application.error = exc_val is not None
-            if exc_type is not None:
-                application.modules = [ErrorModule(exc_val, exc_tb)]
-            else:
-                application.modules = [mod for name, mod in sys.modules.items() 
-                    if not name in self.modules
-                    and hasattr(mod, "__file__")
-                    and mod.__file__.startswith(os.getcwd())
-                ]
-            if application.debug:
-                # on debug mode, store time of last modification of files
-                application.mtime = {
-                    mod.__file__: os.stat(mod.__file__).st_mtime
-                    for mod in application.modules
-                }
-            # initialize routes
-            application.load_routes()
-
-            # always return True even if there was an exception in the block
-            return True
-
-    register = Register()
-
     def get_request_fields(self):
         """Set self.request.fields, a dictionary indexed by field names
         If field name ends with [], the value is a list of values
@@ -221,7 +214,7 @@ class application(http.server.SimpleHTTPRequestHandler):
 
             data = {}
             for k in body.keys():
-                if isinstance(body[k],list): # several fields with same name
+                if isinstance(body[k], list): # several fields with same name
                     values = [x.value for x in body[k]]
                     if k.endswith('[]'):
                         data[k[:-2]] = values
@@ -236,7 +229,27 @@ class application(http.server.SimpleHTTPRequestHandler):
                         else:
                             data[k] = body[k].value
             request.fields.update(data)
-            
+
+    @classmethod
+    def get_registered(cls):
+        if cls.modules:
+            return cls.modules
+        main = sys.modules["__main__"]
+        cls.modules = [main]
+    
+        for key in dir(main):
+            if key.startswith("_"):
+                continue
+            obj = getattr(main, key)
+            if (type(obj) is types.ModuleType
+                    and getattr(obj, "__expose__", True)
+                    and hasattr(obj, "__file__")
+                    and obj.__file__.startswith(os.getcwd())
+                    ):
+                cls.modules.append(obj)
+
+        return cls.modules
+                       
     def handle(self):
         """Process the data received"""
         if application.error:
@@ -244,8 +257,8 @@ class application(http.server.SimpleHTTPRequestHandler):
             exc_msg = application.modules[0].exc_msg.encode("utf-8")
             return self.done(500, io.BytesIO(exc_msg))
         response = self.response
-        self.elts = urllib.parse.urlparse(self.env["PATH_INFO"]+
-            "?"+self.env["QUERY_STRING"])
+        self.elts = urllib.parse.urlparse(self.env["PATH_INFO"] +
+            "?" + self.env["QUERY_STRING"])
         self.url = self.elts[2]
 
         response.headers.add_header("Content-Type", "text/html") # default
@@ -307,14 +320,10 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.response.headers["Content-Length"] = str(os.fstat(f.fileno())[6])
         self.done(200, f)
 
-        
     @classmethod
     def load_routes(cls):
         cls.routes = {}
-        for module in cls.modules:
-            # don't load routes from modules with __exclude__ set
-            if not getattr(module, "__expose__", True):
-                continue
+        for module in cls.get_registered():
             prefix = ""
             if hasattr(module, "__prefix__"):
                 prefix = "/" + module.__prefix__.lstrip("/")
@@ -340,15 +349,16 @@ class application(http.server.SimpleHTTPRequestHandler):
                             and "^/$" not in cls.routes):
                         # route path "/" to function "index"
                         cls.routes["^/$"] = obj
-
+        
+        
     @classmethod
     def check_changes(cls):
         """If debug mode is set, check every 3 seconds if one of the source 
-        files for the registered modules has changed. If so, restart the 
+        files for the imported modules has changed. If so, restart the 
         application"""
-        for mod in cls.modules:
-            mtime = os.stat(mod.__file__).st_mtime
-            if cls.mtime[mod.__file__] != mtime:
+        modules, mtime = tracker.imported()
+        for module in modules:
+            if mtime[module.__file__] != os.stat(module.__file__).st_mtime:
                 python = sys.executable
                 args = sys.argv
                 if " " in args[0]:

@@ -7,7 +7,6 @@ Installation
 
 Hello World
 ===========
-Create a script, __wsgi.py__
 
 ```python
 from bihan import application
@@ -24,28 +23,34 @@ _http://localhost:8000/index_ in the browser address bar, it shows the
 
 URL dispatching
 ===============
-
 Registered modules
 ------------------
 bihan maps urls to functions in the _registered modules_ ("module" in this
 paragraph is used both for modules and packages).
 
-The main module is always registered. To register other modules, they must be
-imported in the main module inside a context manager :
+The registered modules are the main module, and all the modules in the 
+application directory that are imported in the main module.
+
+For instance, if the main module is
 
 ```python
-with application.register:
-    import mymodule
+import datetime
+from bihan import application
+
+import menu
+from scripts import views
+
+def index(dialog):
+    now = datetime.datetime.now()
+    return "Hello, it's {}:{}".format(now.hour, now.minute)
+
+application.run()
 ```
 
-If `mymodule` imports other modules, they are also registered.
+then modules `menu` and `views` are registered, but not `datetime`.
 
-Only the modules whose source file is in inside the application directory are 
-registered : modules from the standard library for instance are not
-registered.
-
-To prevent a module imported in the `with` block from being registered, put
-the line
+If a module must be imported in the main module but must not be registered,
+put the line :
 
 ```python
 __expose__ = False
@@ -78,7 +83,7 @@ def show(dialog):
 ```
 will map the url _books/show_ to the function `show()`
 
-If a callable must not be made accessible, set its attribute `__expose__` to
+To prevent a function from being accessible, set its attribute `__expose__` to
 `False`.
 
 Smart URLs
@@ -96,7 +101,7 @@ index.url = "/show/<num>"
 
 Mapping control
 ---------------
-bihan makes sure that a url matches only one callable in a _registered
+bihan makes sure that a url matches only one function in a _registered
 module_. Otherwise it raises a `RoutingError`, with a message giving the
 scripts and functions that define the same url.
 
@@ -125,7 +130,7 @@ Response body
 =============
 
 The return value of the function is the body of the response sent to the
-browser. If it is not a string, it is converted by `str()`.
+user agent. If it is not a string, it is converted by `str()`.
 
 The argument `dialog`
 =====================
@@ -202,8 +207,9 @@ other attributes of `dialog`
 Development server
 ==================
 The built-in development server checks the changes made to all the modules
-used by the application and located in the application directory. If the
-source code of one of these modules is changed, the application is restarted.
+used by the application and located in the application directory, including
+the main module. If the source code of one of these modules is changed, the
+application is restarted.
 
 If an exception happens when reloading the registered modules, the server 
 doesn't crash, but the exception is stored and will be shown as the result of
