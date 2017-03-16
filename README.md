@@ -64,8 +64,14 @@ Mapping a url to a function in a registered module
 By default, bihan uses function names as urls : all the functions whose name 
 doesn't start with an underscore are accessible by their name.
 
-For instance, a function `users()` in a registered module is mapped to the url
-_/users_.
+For instance, if a registered module has this function:
+
+```python
+def users(dialog):
+    return "Here is a list of users"
+```
+
+the function is mapped to the url _/users_.
 
 You can specify another url for the function by setting its attribute `url` :
 
