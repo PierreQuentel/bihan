@@ -85,28 +85,40 @@ If a registered module defines a variable `__prefix__`, it is prepended to the
 url for all the functions in the module :
 
 ```python
-__prefix__ = "books"
+__prefix__ = "library"
 
-def show(dialog):
+def users(dialog):
     ...
 ```
-will map the url _books/show_ to the function `show()`
+will map the url _library/users_ to the function `users()`
 
-If a function must not be accessible, set its attribute `__expose__` to
-`False`.
+If a function must not be mapped to a url, set its attribute `__expose__` to
+`False` :
+
+```python
+__prefix__ = "library"
+
+def users(dialog):
+    ...
+users.__expose__ = False
+```
+
 
 Smart URLs
 ----------
-If the url includes parts of the form `<x>`, the value matching `x` we be
+If the url includes parts of the form `<x>`, the value matching `x` will be
 available as one the request fields.
 
 For instance :
 
 ```python
 def show(dialog):
-    return "showing record #{}".format(dialog.request.fields['num'])
+    ...
 index.url = "/show/<num>"
 ```
+
+This function is called for urls like __/show/76__, and the value (76) is
+available in the function body as `dialog.request.fields["num"]`.
 
 Mapping control
 ---------------
@@ -169,9 +181,10 @@ The attributes of _dialog.request_ are :
   enctype or content-type set to 'application/x-www-form-urlencoded' or 
   'multipart/...' :
 
-  - `dialog.request.fields` : a dictionary for key/values received 
-    either in the query string, or in the request body for POST
-    requests. Keys and values are strings, not bytes.
+  - `dialog.request.fields` : a dictionary for key/values received either in
+    the query string, or in the request body for POST requests, or in named 
+    arguments in _smart urls_ (see above). Keys and values are strings, not
+    bytes.
 
 - else :
 
@@ -210,15 +223,15 @@ other attributes of `dialog`
   `return dialog.redirection(url)`.
 
 - `dialog.template(filename, **kw)` : if the templating engine [patrom]
-  (https://github.com/PierreQuentel/patrom) is installed, renders the template 
+  (https://github.com/PierreQuentel/patrom) is installed, renders the template
   file at the location __templates/filename__ with the key/values in `kw`.
-  
+
 Development server
 ==================
-The built-in development server checks the changes made to all the modules
-used by the application and located in the application directory, including
-the main module. If the source code of one of these modules is changed, the
-application is restarted.
+The built-in development server periodically checks the changes made to all 
+the modules used by the application (registered or not) and located in the 
+application directory, including the main module. If the source code of one of
+these modules is changed, the application is restarted.
 
 If an exception happens when reloading the registered modules, the server 
 doesn't crash, but the exception is stored and will be shown as the result of
