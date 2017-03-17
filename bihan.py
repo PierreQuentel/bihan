@@ -94,7 +94,7 @@ sys.meta_path.insert(0, tracker)
 
 class application(http.server.SimpleHTTPRequestHandler):
 
-    debug = True
+    debug = False
     error = None
     modules = []
     root = os.getcwd()
@@ -157,6 +157,34 @@ class application(http.server.SimpleHTTPRequestHandler):
 
         self.start_response(str(self.status), headers)
         yield self.response.body
+
+    @classmethod
+    def check_changes(cls):
+        """If debug mode is set, check every 3 seconds if one of the source 
+        files for the imported modules has changed. If so, restart the 
+        application"""
+        modules, mtime = tracker.imported()
+        for module in modules:
+            if mtime[module.__file__] != os.stat(module.__file__).st_mtime:
+                python = sys.executable
+                args = sys.argv
+                if " " in args[0]:
+                    args[0] = '"' + args[0] + '"'
+                os.execl(python, python, *args)
+                
+        t = threading.Timer(3.0, cls.check_changes)
+        t.start()
+
+    def done(self, code, infile):
+        """Send response, cookies, response headers and the data read from 
+        infile
+        """
+        self.status = "{} {}".format(code, 
+            http.server.BaseHTTPRequestHandler.responses[code])
+        if code == 500:
+            self.response.headers.set_type("text/plain")
+        infile.seek(0)
+        self.response.body = infile.read()
 
     def get_request_fields(self):
         """Set self.request.fields, a dictionary indexed by field names
@@ -280,48 +308,9 @@ class application(http.server.SimpleHTTPRequestHandler):
         # Run function
         return self.render(func)
 
-    def send_static(self, fs_path):
-        """Send the content of a file"""
-        try:
-            f = open(fs_path,'rb')
-            fs = os.fstat(f.fileno())
-        except IOError:
-            return self.send_error(404, "File not found",
-                "No file found for given url")
-        # Use browser cache if possible
-        if "If-Modified-Since" in self.request.headers:
-            # compare If-Modified-Since and time of last file modification
-            try:
-                ims = email.utils.parsedate_to_datetime(
-                    self.request.headers["If-Modified-Since"])
-            except (TypeError, IndexError, OverflowError, ValueError):
-                # ignore ill-formed values
-                pass
-            else:
-                if ims.tzinfo is None:
-                    # obsolete format with no timezone, cf.
-                    # https://tools.ietf.org/html/rfc7231#section-7.1.1.1
-                    ims = ims.replace(tzinfo=datetime.timezone.utc)
-                if ims.tzinfo is datetime.timezone.utc:
-                    # compare to UTC datetime of last modification
-                    last_modif = datetime.datetime.fromtimestamp(
-                        fs.st_mtime, datetime.timezone.utc)
-                    # remove microseconds, like in If-Modified-Since
-                    last_modif = last_modif.replace(microsecond=0)
-                    
-                    if last_modif <= ims:
-                        f.close()
-                        return self.done(304, io.BytesIO())
-        ctype = self.guess_type(fs_path)
-        if ctype.startswith("text/"):
-            ctype += ";charset=utf-8"
-        self.response.headers.set_type(ctype)
-        self.response.headers["Last-Modified"] = self.date_time_string(fs.st_mtime)
-        self.response.headers["Content-Length"] = str(os.fstat(f.fileno())[6])
-        self.done(200, f)
-
     @classmethod
     def load_routes(cls):
+        """Build the mapping between url patterns and functions"""
         cls.routes = {}
         for module in cls.get_registered():
             prefix = ""
@@ -349,24 +338,6 @@ class application(http.server.SimpleHTTPRequestHandler):
                             and "^/$" not in cls.routes):
                         # route path "/" to function "index"
                         cls.routes["^/$"] = obj
-        
-        
-    @classmethod
-    def check_changes(cls):
-        """If debug mode is set, check every 3 seconds if one of the source 
-        files for the imported modules has changed. If so, restart the 
-        application"""
-        modules, mtime = tracker.imported()
-        for module in modules:
-            if mtime[module.__file__] != os.stat(module.__file__).st_mtime:
-                python = sys.executable
-                args = sys.argv
-                if " " in args[0]:
-                    args[0] = '"' + args[0] + '"'
-                os.execl(python, python, *args)
-                
-        t = threading.Timer(3.0, cls.check_changes)
-        t.start()
 
     def resolve(self, url):
         """If url matches a route defined for the application, return the
@@ -449,6 +420,62 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.response.headers["Content-Length"] = output.tell()
         self.done(response_code, output)
 
+    @classmethod
+    def run(cls, host="localhost", port=8000, debug=False):
+        from wsgiref.simple_server import make_server
+        cls.debug = debug
+        cls.httpd = make_server(host, port, application)
+        print("Serving on port {}".format(port))
+        cls.load_routes()
+        if cls.debug:
+            cls.check_changes()
+        cls.httpd.serve_forever(poll_interval=0.5)
+
+    def send_error(self, code, expl, msg=""):
+        self.status = "{} {}".format(code, expl)
+        self.response.headers.set_type("text/plain")
+        self.response.body = msg.encode(self.response.encoding)
+
+    def send_static(self, fs_path):
+        """Send the content of a file"""
+        try:
+            f = open(fs_path,'rb')
+            fs = os.fstat(f.fileno())
+        except IOError:
+            return self.send_error(404, "File not found",
+                "No file found for given url")
+        # Use browser cache if possible
+        if "If-Modified-Since" in self.request.headers:
+            # compare If-Modified-Since and time of last file modification
+            try:
+                ims = email.utils.parsedate_to_datetime(
+                    self.request.headers["If-Modified-Since"])
+            except (TypeError, IndexError, OverflowError, ValueError):
+                # ignore ill-formed values
+                pass
+            else:
+                if ims.tzinfo is None:
+                    # obsolete format with no timezone, cf.
+                    # https://tools.ietf.org/html/rfc7231#section-7.1.1.1
+                    ims = ims.replace(tzinfo=datetime.timezone.utc)
+                if ims.tzinfo is datetime.timezone.utc:
+                    # compare to UTC datetime of last modification
+                    last_modif = datetime.datetime.fromtimestamp(
+                        fs.st_mtime, datetime.timezone.utc)
+                    # remove microseconds, like in If-Modified-Since
+                    last_modif = last_modif.replace(microsecond=0)
+                    
+                    if last_modif <= ims:
+                        f.close()
+                        return self.done(304, io.BytesIO())
+        ctype = self.guess_type(fs_path)
+        if ctype.startswith("text/"):
+            ctype += ";charset=utf-8"
+        self.response.headers.set_type(ctype)
+        self.response.headers["Last-Modified"] = self.date_time_string(fs.st_mtime)
+        self.response.headers["Content-Length"] = str(os.fstat(f.fileno())[6])
+        self.done(200, f)
+
     def template(self, filename, **kw):
         """If the template engine patrom is installed, use it to render the
         template file with the specified key/values
@@ -464,30 +491,6 @@ class application(http.server.SimpleHTTPRequestHandler):
             self.response.headers.set_type("text/plain")
         return result
 
-    def send_error(self, code, expl, msg=""):
-        self.status = "{} {}".format(code, expl)
-        self.response.headers.set_type("text/plain")
-        self.response.body = msg.encode(self.response.encoding)
-
-    def done(self, code, infile):
-        """Send response, cookies, response headers and the data read from 
-        infile
-        """
-        self.status = "{} {}".format(code, 
-            http.server.BaseHTTPRequestHandler.responses[code])
-        if code == 500:
-            self.response.headers.set_type("text/plain")
-        infile.seek(0)
-        self.response.body = infile.read()
-
-    @classmethod
-    def run(cls, host="localhost", port=8000):
-        from wsgiref.simple_server import make_server
-        cls.httpd = make_server(host, port, application)
-        print("Serving on port {}".format(port))
-        if cls.debug:
-            cls.check_changes()
-        cls.httpd.serve_forever(poll_interval=0.5)
 
 if __name__ == '__main__':
     application.run(port=8000)
