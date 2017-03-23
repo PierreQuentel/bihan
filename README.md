@@ -104,8 +104,6 @@ If a function must not be mapped to a url, set its attribute `__expose__` to
 `False` :
 
 ```python
-__prefix__ = "library"
-
 def users(dialog):
     ...
 users.__expose__ = False
