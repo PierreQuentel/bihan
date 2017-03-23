@@ -66,6 +66,7 @@ class ErrorModule:
 
 
 class ImportTracker:
+    """Finder to track all the modules imported by the application"""
 
     _imported = set(["__main__"])
     modules = []
@@ -75,6 +76,10 @@ class ImportTracker:
         return None
 
     def imported(self):
+        """Return all the imported modules (registered or not) in the 
+        application directory and store their last modification time. Used
+        to detect changes and reload the server if necessary.
+        """
         if self.modules:
             return self.modules, self.mtime
         self.modules = modules = [sys.modules["__main__"]]
@@ -89,14 +94,15 @@ class ImportTracker:
         return modules, self.mtime
 
 tracker = ImportTracker()
-
 sys.meta_path.insert(0, tracker)
 
+
 class application(http.server.SimpleHTTPRequestHandler):
+    """WSGI entry point"""
 
     debug = False
     error = None
-    modules = []
+    registered = []
     root = os.getcwd()
     static = {'/static': os.path.join(os.getcwd(), 'static')}
 
@@ -162,7 +168,8 @@ class application(http.server.SimpleHTTPRequestHandler):
     def check_changes(cls):
         """If debug mode is set, check every 3 seconds if one of the source 
         files for the imported modules has changed. If so, restart the 
-        application"""
+        application.
+        """
         modules, mtime = tracker.imported()
         for module in modules:
             if mtime[module.__file__] != os.stat(module.__file__).st_mtime:
@@ -172,12 +179,11 @@ class application(http.server.SimpleHTTPRequestHandler):
                     args[0] = '"' + args[0] + '"'
                 os.execl(python, python, *args)
                 
-        t = threading.Timer(3.0, cls.check_changes)
-        t.start()
-
+        threading.Timer(3.0, cls.check_changes).start()
+        
     def done(self, code, infile):
         """Send response, cookies, response headers and the data read from 
-        infile
+        infile.
         """
         self.status = "{} {}".format(code, 
             http.server.BaseHTTPRequestHandler.responses[code])
@@ -187,9 +193,9 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.response.body = infile.read()
 
     def get_request_fields(self):
-        """Set self.request.fields, a dictionary indexed by field names
-        If field name ends with [], the value is a list of values
-        Else, it is a single value, or a list if there are several values
+        """Set self.request.fields, a dictionary indexed by field names.
+        If field name ends with [], the value is a list of values.
+        Else, it is a single value, or a list if there are several values.
         """
         request = self.request
         request.fields = {}
@@ -226,8 +232,8 @@ class application(http.server.SimpleHTTPRequestHandler):
                     ctype.startswith("multipart/")
 
             # If data is not structured with key and value (eg JSON content),
-            # only read raw data and set attribute "raw" and "json" of request 
-            # object
+            # only read raw data and set attributes "raw" and "json" of the
+            # request object.
             if not has_keys:
                 length = int(request.headers["Content-Length"])
                 request.raw = fp.read(length)
@@ -260,10 +266,15 @@ class application(http.server.SimpleHTTPRequestHandler):
 
     @classmethod
     def get_registered(cls):
-        if cls.modules:
-            return cls.modules
+        """Return the registered modules : those in the main module namespace
+        whose source is located in the application directory and don't have
+        an attribute __expose__ set to False.
+        """
+        if cls.registered:
+            # registered modules are cached in a class attribute
+            return cls.registered
         main = sys.modules["__main__"]
-        cls.modules = [main]
+        cls.registered = [main]
     
         for key in dir(main):
             if key.startswith("_"):
@@ -274,28 +285,30 @@ class application(http.server.SimpleHTTPRequestHandler):
                     and hasattr(obj, "__file__")
                     and obj.__file__.startswith(os.getcwd())
                     ):
-                cls.modules.append(obj)
+                cls.registered.append(obj)
 
-        return cls.modules
+        return cls.registered
                        
     def handle(self):
         """Process the data received"""
         if application.error:
             # an exception was raised when loading modules
-            exc_msg = application.modules[0].exc_msg.encode("utf-8")
+            exc_msg = application.registered[0].exc_msg.encode("utf-8")
             return self.done(500, io.BytesIO(exc_msg))
         response = self.response
         self.elts = urllib.parse.urlparse(self.env["PATH_INFO"] +
             "?" + self.env["QUERY_STRING"])
         self.url = self.elts[2]
 
-        response.headers.add_header("Content-Type", "text/html") # default
+        # default content type is text/html
+        response.headers.add_header("Content-Type", "text/html")
 
         kind, arg = self.resolve(self.url)
         
         if kind is None:
             return self.send_error(404, "File not found", 
                 "No file matching {}".format(self.url))
+
         if kind=='file':
             if not os.path.exists(arg):
                 return self.send_error(404, "File not found", 
@@ -338,39 +351,6 @@ class application(http.server.SimpleHTTPRequestHandler):
                             and "^/$" not in cls.routes):
                         # route path "/" to function "index"
                         cls.routes["^/$"] = obj
-
-    def resolve(self, url):
-        """If url matches a route defined for the application, return the
-        tuple ('func', (function_object, arguments)) where function_object is 
-        the function to call and arguments is a dictionary for patterns such 
-        as url/<arg>.
-        Otherwise return the tuple ('file', path) where path is built from the
-        application root and the parts in url.
-        """
-        # Split url in elements separated by /
-        elts = urllib.parse.unquote(url).lstrip("/").split("/")
-
-        target, patterns = None, []
-        if application.debug:
-            application.load_routes()
-        for pattern, obj in application.routes.items():
-            mo = re.match(pattern, url, flags=re.I)
-            if mo:
-                patterns.append(pattern)
-                if target is not None:
-                    # exception if more than one pattern matches the url
-                    msg = "url {} matches at least 2 patterns : {}"
-                    raise DispatchError(msg.format(url, patterns))
-                target = (obj, mo.groupdict())
-        if target is not None:
-            return 'func', target
-
-        # if url is not registered, try a path in the file system
-        head = '/' + elts[0]
-        if head in self.static:
-            return 'file', os.path.join(self.static[head], *elts[1:])
-        
-        return None, None
 
     def render(self, func):
         """Run the function and send its result."""
@@ -420,10 +400,40 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.response.headers["Content-Length"] = output.tell()
         self.done(response_code, output)
 
+    def resolve(self, url):
+        """If url matches a route defined for the application, return the
+        tuple ('func', (function_object, arguments)) where function_object is 
+        the function to call and arguments is a dictionary for patterns such 
+        as url/<arg>.
+        Otherwise return the tuple ('file', path) where path is built from the
+        application root and the parts in url.
+        """
+        # Split url in elements separated by /
+        elts = urllib.parse.unquote(url).lstrip("/").split("/")
+
+        target, patterns = None, []
+        for pattern, obj in application.routes.items():
+            mo = re.match(pattern, url, flags=re.I)
+            if mo:
+                patterns.append(pattern)
+                if target is not None:
+                    # exception if more than one pattern matches the url
+                    msg = "url {} matches at least 2 patterns : {}"
+                    raise DispatchError(msg.format(url, patterns))
+                target = (obj, mo.groupdict())
+        if target is not None:
+            return 'func', target
+
+        # if url is not registered, try a path in the file system
+        head = '/' + elts[0]
+        if head in self.static:
+            return 'file', os.path.join(self.static[head], *elts[1:])
+        
+        return None, None
+
     @classmethod
-    def run(cls, host="localhost", port=8000, debug=False):
+    def run(cls, host="localhost", port=8000):
         from wsgiref.simple_server import make_server
-        cls.debug = debug
         cls.httpd = make_server(host, port, application)
         print("Serving on port {}".format(port))
         cls.load_routes()
