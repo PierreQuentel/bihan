@@ -86,6 +86,9 @@ def users(dialog):
 users.url = "/show_users"
 ```
 
+Special case : if a function is called `index`, it is mapped by default to the
+url _/_.
+
 If a registered module defines a variable `__prefix__`, it is prepended to the
 url for all the functions in the module :
 
@@ -119,7 +122,7 @@ For instance :
 ```python
 def show(dialog):
     ...
-index.url = "/show/<num>"
+show.url = "/show/<num>"
 ```
 
 This function is called for urls like _/show/76_, and the value (76) is
