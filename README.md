@@ -138,7 +138,7 @@ Application attributes and methods
 - `application.debug` sets the debug mode. If `True`, all the modules are
   reloaded at each request, so that changes made to the scripts are taken
   into account and the mapping between urls and functions is reset.
-  Defaults to `True`.
+  Defaults to `False`.
   
 - `application.root` is a path in the server file system. It is available in
   scripts as `dialog.root`. Defaults to the application directory.
