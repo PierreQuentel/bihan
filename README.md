@@ -11,14 +11,14 @@ Hello World
 ```python
 from bihan import application
 
-def index(dialog):
+def hello(dialog):
     return "Hello World"
 
 application.run()
 ```
 
 This starts a built-in web server on port 8000. Enter 
-_http://localhost:8000/index_ in the browser address bar, it shows the
+_http://localhost:8000/hello_ in the browser address bar, it shows the
 "Hello World" message.
 
 URL dispatching
