@@ -137,12 +137,12 @@ Application attributes and methods
 
 `application.root`
 
-> a path in the server file system. It is available in
+> A path in the server file system. It is available in
 > scripts as `dialog.root`. Defaults to the application directory.
 
 `application.run(host="localhost", port=8000, debug=False)`
 
-> starts the application on the development server, on the specified _host_
+> Starts the application on the development server, on the specified _host_
 > and _port_.
 >
 > _debug_ sets the debug mode. If `True`, the program periodically checks if
@@ -158,7 +158,7 @@ Application attributes and methods
 
 `application.static`
 
-> a dictionary mapping paths of the form _/path_ to directories in the server
+> A dictionary mapping paths of the form _/path_ to directories in the server
 > file system. It it used to serve static files (HTML pages, images,
 > Javascript programs, etc.). By default, the dictionary maps _/static_ to the
 > folder __static__ in the server directory.
@@ -175,9 +175,11 @@ The argument `dialog`
 
 The functions that are mapped to urls take a single argument, `dialog`.
 
-`dialog` has two main attributes, `request`, which holds the information sent
-by the browser, and `response` which is used to send back information to the
-browser.
+`dialog` has two main attributes:
+
+- `request` : holds the information sent by the user agent
+- `response` : used to send back information (other than the response body) to
+  the user agent
 
 `dialog.request`
 ----------------
