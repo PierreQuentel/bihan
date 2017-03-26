@@ -143,9 +143,8 @@ Application attributes and methods
 - `application.root` is a path in the server file system. It is available in
   scripts as `dialog.root`. Defaults to the application directory.
 
-- `application.run([host, [port]])` starts the application on the development
-  server, on the specified host and port. _host_ defaults to `"localhost"` 
-  and _port_ to `8000`.
+- `application.run(host="localhost", port=8000, debug=False)` starts the
+  application on the development server, on the specified host and port.
 
 - `application.static` is a dictionary mapping paths of the form _/path_ to 
   directories in the server file system. It it used to serve static files 
@@ -217,16 +216,16 @@ The attributes that can be set to `dialog.response` are:
 
 other attributes of `dialog`
 ----------------------------
-- `dialog.root` : path of document root in the server file system.
+- `dialog.root` : path of document root in the server file system. Set to the
+  value of `application.root`.
 
 - `dialog.environ` : WSGI environment variables.
 
-- `dialog.error` : used if the script wants to return an HTTP error code, eg 
+- `dialog.error` : used to return an HTTP error code, eg 
   `return dialog.error(404)`.
 
 - `dialog.redirection` : used if the script wants to perform a temporary
-  redirection (302) to a specified URL : 
-  `return dialog.redirection(url)`.
+  redirection (302) to a specified URL, eg `return dialog.redirection(url)`.
 
 - `dialog.template(filename, **kw)` : if the templating engine 
   [patrom](https://github.com/PierreQuentel/patrom) is installed, renders the

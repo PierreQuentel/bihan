@@ -432,11 +432,14 @@ class application(http.server.SimpleHTTPRequestHandler):
         return None, None
 
     @classmethod
-    def run(cls, host="localhost", port=8000):
+    def run(cls, host="localhost", port=8000, debug=False):
         from wsgiref.simple_server import make_server
         cls.httpd = make_server(host, port, application)
         print("Serving on port {}".format(port))
         cls.load_routes()
+        if debug not in [True, False]:
+            raise ValueError("debug must be True or False")
+        cls.debug = debug
         if cls.debug:
             cls.check_changes()
         cls.httpd.serve_forever(poll_interval=0.5)
