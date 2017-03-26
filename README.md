@@ -138,12 +138,13 @@ Application attributes and methods
 `application.root`
 
 > a path in the server file system. It is available in
->  scripts as `dialog.root`. Defaults to the application directory.
+> scripts as `dialog.root`. Defaults to the application directory.
 
 `application.run(host="localhost", port=8000, debug=False)`
 
 > starts the application on the development server, on the specified _host_
 > and _port_.
+>
 > _debug_ sets the debug mode. If `True`, the program periodically checks if
 > a change has been made to the modules used by the application (registered or
 > not) and located in the application directory, including the main module. If
@@ -182,66 +183,91 @@ browser.
 ----------------
 The attributes of _dialog.request_ are :
 
-- `dialog.request.url` : the requested url (without query string).
+`dialog.request.url`
 
-- `dialog.request.headers` : the http request headers sent by the user agent.
-  Instance of [email.message.Message](https://docs.python.org/3/library/email.message.html).
+> The requested url (without the query string).
 
-- `dialog.request.encoding` : the encoding used in the request.
+`dialog.request.headers`
 
-- `dialog.request.cookies` : instance of 
-  [http.cookies.SimpleCookie](https://docs.python.org/3/library/http.cookies.html),
-  holds the cookies sent by the user agent.
+> The http request headers sent by the user agent. Instance of 
+> [email.message.Message](https://docs.python.org/3/library/email.message.html).
 
-- if the request is sent with the GET method, or the POST method with
-  enctype or content-type set to "application/x-www-form-urlencoded" or 
-  "multipart/..." :
+`dialog.request.encoding`
 
-  - `dialog.request.fields` : a dictionary for key/values received either in
-    the query string, or in the request body for POST requests, or in named 
-    arguments in _smart urls_ (see above). Keys and values are strings, not
-    bytes.
+> The encoding used in the request.
 
-- else :
+`dialog.request.cookies`
 
-  - `dialog.request.raw` : request body as bytes for requests of other types (eg
-    Ajax requests with JSON content).
+> The cookies sent by the user agent. Instance of
+> [http.cookies.SimpleCookie](https://docs.python.org/3/library/http.cookies.html).
+>
+
+If the request is sent with the GET method, or the POST method with
+enctype or content-type set to "application/x-www-form-urlencoded" or 
+"multipart/..." :
+
+`dialog.request.fields`
+
+> A dictionary for key/values received either in the query string, or in the
+> request body for POST requests, or in named arguments in _smart urls_ (see 
+> above). Keys and values are strings, not bytes.
+
+For requests sent with other methods or content-type :
+
+`dialog.request.raw`
+
+> Request body as bytes for requests of other types (eg Ajax requests with
+> JSON content).
   
-  - `dialog.request.json()` : function with no argument that returns a
-    dictionary built as the parsing of request body.
+`dialog.request.json()`
+
+> Function with no argument that returns a dictionary built as the parsing of
+> the request body.
 
 `dialog.response`
 -----------------
 The attributes that can be set to `dialog.response` are:
 
-- `dialog.response.headers` : the HTTP response headers. Instance of
-  [email.message.Message](https://docs.python.org/3/library/email.message.html)
+`dialog.response.headers`
 
-- `dialog.response.cookie` : instance of
-  [http.cookies.SimpleCookie](https://docs.python.org/3/library/http.cookies.html),
-  used to set cookies  to send to the user agent with the response.
+> The HTTP response headers. Instance of
+> [email.message.Message](https://docs.python.org/3/library/email.message.html)
 
-- `dialog.response.encoding` : Unicode encoding to use to convert the 
-  string returned by script functions into a bytestring. Defaults to 
-  "utf-8".
+`dialog.response.cookie`
+
+> Used to set cookies to send to the user agent with the response. Instance of
+> [http.cookies.SimpleCookie](https://docs.python.org/3/library/http.cookies.html)
+
+`dialog.response.encoding`
+
+> Unicode encoding to use to convert the string returned by script functions
+> into a bytestring. Defaults to "utf-8".
 
 other attributes of `dialog`
 ----------------------------
-- `dialog.root` : path of document root in the server file system. Set to the
-  value of `application.root`.
+- `dialog.root`
 
-- `dialog.environ` : WSGI environment variables.
+> Path of document root in the server file system. Set to the value of
+> `application.root`.
 
-- `dialog.error` : used to return an HTTP error code, eg 
-  `return dialog.error(404)`.
+`dialog.environ`
 
-- `dialog.redirection` : used if the script wants to perform a temporary
-  redirection (302) to a specified URL, eg `return dialog.redirection(url)`.
+> WSGI environment variables.
 
-- `dialog.template(filename, **kw)` : if the templating engine 
-  [patrom](https://github.com/PierreQuentel/patrom) is installed, renders the
-  template file at the location __templates/filename__ with the key/values in
-  `kw`.
+`dialog.error`
 
-Development server
-==================
+> Used to return an HTTP error code, eg 
+>
+>  `return dialog.error(404)`.
+
+`dialog.redirection`
+
+> Used to perform a temporary redirection (302) to a specified URL, eg
+>
+> `return dialog.redirection(url)`.
+
+`dialog.template(filename, **kw)`
+
+> If the templating engine [patrom](https://github.com/PierreQuentel/patrom)
+> is installed, renders the template file at the location 
+> __templates/filename__ with the key/values in `kw`.
