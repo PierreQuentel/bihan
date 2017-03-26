@@ -211,6 +211,10 @@ enctype or content-type set to "application/x-www-form-urlencoded" or
 > A dictionary for key/values received either in the query string, or in the
 > request body for POST requests, or in named arguments in _smart urls_ (see 
 > above). Keys and values are strings, not bytes.
+>
+> For file uploads, the value associated with the key has the attributes
+> `filename`, and `file`, a file-like object open for reading. Its `read()`
+> method returs bytes.
 
 For requests sent with other methods or content-type :
 
@@ -245,7 +249,7 @@ The attributes that can be set to `dialog.response` are:
 
 other attributes of `dialog`
 ----------------------------
-- `dialog.root`
+`dialog.root`
 
 > Path of document root in the server file system. Set to the value of
 > `application.root`.
