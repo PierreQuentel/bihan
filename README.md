@@ -216,12 +216,12 @@ enctype or content-type set to "application/x-www-form-urlencoded" or
 > `filename`, and `file`, a file-like object open for reading. Its `read()`
 > method returns bytes.
 
-For requests sent with other methods or content-type :
+For requests sent with other methods or content-type ((eg Ajax requests with
+JSON content) :
 
 `dialog.request.raw`
 
-> Request body as bytes for requests of other types (eg Ajax requests with
-> JSON content).
+> Request body as bytes.
   
 `dialog.request.json()`
 
