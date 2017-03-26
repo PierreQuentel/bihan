@@ -17,7 +17,7 @@ def hello(dialog):
 application.run()
 ```
 
-This starts a built-in web server on port 8000. Enter 
+This script starts a built-in web server on port 8000. Enter
 _http://localhost:8000/hello_ in the browser address bar, it shows the
 "Hello World" message.
 
@@ -50,8 +50,8 @@ def index(dialog):
 application.run()
 ```
 
-then modules `menu` and `views` are registered, but not `datetime` because it
-is in the standard library.
+then the _registered modules_ are the main module, plus modules `menu` and
+`views` ; `datetime` is not registered because it is in the standard library.
 
 The name of a _registered module_ must be in the main script namespace. An
 import like `import scripts.views` doesn't register the module __views__ ; it
