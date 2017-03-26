@@ -135,22 +135,33 @@ scripts and functions that define the same url.
 Application attributes and methods
 ==================================
 
-- `application.debug` sets the debug mode. If `True`, all the modules are
-  reloaded at each request, so that changes made to the scripts are taken
-  into account and the mapping between urls and functions is reset.
-  Defaults to `False`.
-  
-- `application.root` is a path in the server file system. It is available in
-  scripts as `dialog.root`. Defaults to the application directory.
+`application.root`
 
-- `application.run(host="localhost", port=8000, debug=False)` starts the
-  application on the development server, on the specified host and port.
+> a path in the server file system. It is available in
+>  scripts as `dialog.root`. Defaults to the application directory.
 
-- `application.static` is a dictionary mapping paths of the form _/path_ to 
-  directories in the server file system. It it used to serve static files 
-  (HTML pages, images, Javascript programs, etc.). By default, the dictionary 
-  maps _/static_ to the folder __static__ in the server directory.
-  
+`application.run(host="localhost", port=8000, debug=False)`
+
+> starts the application on the development server, on the specified _host_
+> and _port_.
+> _debug_ sets the debug mode. If `True`, the program periodically checks if
+> a change has been made to the modules used by the application (registered or
+> not) and located in the application directory, including the main module. If
+> the source code of one of these modules is changed, the application is 
+> restarted.
+>
+> If an exception happens when reloading the registered modules, the server
+> doesn't crash, but the exception is stored and will be shown as the result
+> of the next request.
+
+
+`application.static`
+
+> a dictionary mapping paths of the form _/path_ to directories in the server
+> file system. It it used to serve static files (HTML pages, images,
+> Javascript programs, etc.). By default, the dictionary maps _/static_ to the
+> folder __static__ in the server directory.
+
 
 Response body
 =============
@@ -234,11 +245,3 @@ other attributes of `dialog`
 
 Development server
 ==================
-The built-in development server periodically checks the changes made to all 
-the modules used by the application (registered or not) and located in the 
-application directory, including the main module. If the source code of one of
-these modules is changed, the application is restarted.
-
-If an exception happens when reloading the registered modules, the server 
-doesn't crash, but the exception is stored and will be shown as the result of
-the next request.
