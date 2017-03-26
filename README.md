@@ -214,7 +214,7 @@ enctype or content-type set to "application/x-www-form-urlencoded" or
 >
 > For file uploads, the value associated with the key has the attributes
 > `filename`, and `file`, a file-like object open for reading. Its `read()`
-> method returs bytes.
+> method returns bytes.
 
 For requests sent with other methods or content-type :
 
