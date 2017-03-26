@@ -66,8 +66,9 @@ __expose__ = False
 
 Mapping a url to a function in a registered module
 --------------------------------------------------
-By default, bihan uses function names as urls : all the functions whose name 
-doesn't start with an underscore are accessible by their name.
+By default, bihan uses function names as urls : all the functions defined in
+the module (not those imported from another module) and whose name doesn't
+start with an underscore are accessible by their name.
 
 For instance, if a registered module has this function:
 
@@ -100,15 +101,14 @@ def users(dialog):
 ```
 will map the url _library/users_ to the function `users()`
 
-If a function must not be mapped to a url, set its attribute `__expose__` to
-`False` :
+If a function must *not* be mapped to a url, its attribute `__expose__` must
+be set to `False` :
 
 ```python
 def users(dialog):
     ...
 users.__expose__ = False
 ```
-
 
 Smart URLs
 ----------

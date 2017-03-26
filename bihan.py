@@ -331,16 +331,13 @@ class application(http.server.SimpleHTTPRequestHandler):
                 prefix = "/" + module.__prefix__.lstrip("/")
             for key in dir(module):
                 obj = getattr(module, key)
-                # Functions exposed are those whose name doesn't start with _,
-                # don't have an attribute __expose__ set to False, and are not
-                # defined in a module that has a name __expose__ set to False.
+                # Functions exposed are those defined in the module (not
+                # imported), whose name doesn't start with _, and don't have
+                # an attribute __expose__ set to False.
                 if (type(obj) is types.FunctionType 
+                        and obj.__module__ == module.__name__
                         and not key.startswith("_") 
                         and getattr(obj, '__expose__', True)
-                        and (obj.__module__ in sys.modules
-                             and getattr(sys.modules[obj.__module__], 
-                                 '__expose__', True)
-                            )
                     ):
                     url = obj.url if hasattr(obj, "url") else "/" + key
                     url = "/" + (prefix + url).lstrip("/")
