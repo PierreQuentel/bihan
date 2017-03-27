@@ -28,11 +28,12 @@ Registered modules
 bihan maps urls to functions in the _registered modules_ ("module" in this
 paragraph is used both for modules and packages).
 
-The registered modules are:
+The _registered modules_ are:
 
-- the main module
+- the main module, ie the one where the application is started by
+  `application.run()`
 - all the modules _in the application directory_ (ie not from the standard
-library or third-party) that are imported in the main module.
+  library or third-party) that are imported in the main module
 
 For instance, if the main module is
 
