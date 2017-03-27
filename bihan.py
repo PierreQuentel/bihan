@@ -215,7 +215,7 @@ class application(http.server.SimpleHTTPRequestHandler):
         if request.method in ["POST", "PUT", "DELETE"]:
 
             # Get encoding of request data
-            charset = "utf-8"
+            charset = "iso-8859-1"
             for key in request.headers:
                 mo = re.search("charset\s*=(.*)$", request.headers[key])
                 if mo:

@@ -28,9 +28,11 @@ Registered modules
 bihan maps urls to functions in the _registered modules_ ("module" in this
 paragraph is used both for modules and packages).
 
-The registered modules are the main module, and all the modules _in the 
-application directory_ (ie not from the standard library or third-party)
-that are imported in the main module.
+The registered modules are:
+
+- the main module
+- all the modules _in the application directory_ (ie not from the standard
+library or third-party) that are imported in the main module.
 
 For instance, if the main module is
 
@@ -50,7 +52,7 @@ def index(dialog):
 application.run()
 ```
 
-then the _registered modules_ are the main module, plus modules `menu` and
+then the _registered modules_ are the main module, plus the modules `menu` and
 `views` ; `datetime` is not registered because it is in the standard library.
 
 The name of a _registered module_ must be in the main script namespace. An
@@ -124,7 +126,8 @@ show.url = "/show/<num>"
 ```
 
 This function is called for urls like _/show/76_, and the value (76) is
-available in the function body as `dialog.request.fields["num"]`.
+available in the function body as `dialog.request.fields["num"]` (see the
+attributes of `dialog` below).
 
 Mapping control
 ---------------
@@ -137,8 +140,8 @@ Application attributes and methods
 
 `application.root`
 
-> A path in the server file system. It is available in
-> scripts as `dialog.root`. Defaults to the application directory.
+> A path in the server file system. It is available in scripts as
+> `dialog.root`. Defaults to the application directory.
 
 `application.run(host="localhost", port=8000, debug=False)`
 
@@ -151,9 +154,9 @@ Application attributes and methods
 > the source code of one of these modules is changed, the application is 
 > restarted.
 >
-> If an exception happens when reloading the registered modules, the server
-> doesn't crash, but the exception is stored and will be shown as the result
-> of the next request.
+> If an exception happens when restarting the application, the server doesn't
+> crash, but the exception is stored and will be shown as the result of the
+> next request.
 
 
 `application.static`
@@ -196,7 +199,9 @@ The attributes of _dialog.request_ are :
 
 `dialog.request.encoding`
 
-> The encoding used in the request.
+> The encoding used by the user agent to encode request data. If one of the
+> request headers defines a value for "charset", this value is used ;
+> otherwise, it is set to "iso-8859-1".
 
 `dialog.request.cookies`
 
