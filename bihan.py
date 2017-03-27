@@ -429,7 +429,7 @@ class application(http.server.SimpleHTTPRequestHandler):
         if target is not None:
             return 'func', target
 
-        # if url is not registered, try a path in the file system
+        # try a path in static directories
         head = '/' + elts[0]
         if head in self.static:
             return 'file', os.path.join(self.static[head], *elts[1:])
@@ -438,6 +438,7 @@ class application(http.server.SimpleHTTPRequestHandler):
 
     @classmethod
     def run(cls, host="localhost", port=8000, debug=False):
+        """Start the built-in server"""
         from wsgiref.simple_server import make_server
         cls.httpd = make_server(host, port, application)
         print("Serving on port {}".format(port))
@@ -450,6 +451,7 @@ class application(http.server.SimpleHTTPRequestHandler):
         cls.httpd.serve_forever(poll_interval=0.5)
 
     def send_error(self, code, expl, msg=""):
+        """Send error message"""
         self.status = "{} {}".format(code, expl)
         self.response.headers.set_type("text/plain")
         self.response.body = msg.encode(self.response.encoding)
@@ -457,7 +459,7 @@ class application(http.server.SimpleHTTPRequestHandler):
     def send_static(self, fs_path):
         """Send the content of a file"""
         try:
-            f = open(fs_path,'rb')
+            f = open(fs_path, 'rb')
             fs = os.fstat(f.fileno())
         except IOError:
             return self.send_error(404, "File not found",
