@@ -256,8 +256,8 @@ The attributes that can be set to `dialog.response` are:
 
 `dialog.response.encoding`
 
-> Unicode encoding to use to convert the string returned by script functions
-> into a bytestring. Defaults to "utf-8".
+> Unicode encoding to use to convert the string returned by the function into
+> a bytestring. Defaults to "utf-8".
 
 other attributes of `dialog`
 ----------------------------
