@@ -189,14 +189,11 @@ The functions that are mapped to urls take a single argument, `dialog`.
 ----------------
 The attributes of _dialog.request_ are :
 
-`dialog.request.url`
+`dialog.request.cookies`
 
-> The requested url (without the query string).
-
-`dialog.request.headers`
-
-> The http request headers sent by the user agent. Instance of 
-> [email.message.Message](https://docs.python.org/3/library/email.message.html).
+> The cookies sent by the user agent. Instance of
+> [http.cookies.SimpleCookie](https://docs.python.org/3/library/http.cookies.html).
+>
 
 `dialog.request.encoding`
 
@@ -204,11 +201,18 @@ The attributes of _dialog.request_ are :
 > request headers defines a value for "charset", this value is used ;
 > otherwise, it is set to "iso-8859-1".
 
-`dialog.request.cookies`
+`dialog.request.headers`
 
-> The cookies sent by the user agent. Instance of
-> [http.cookies.SimpleCookie](https://docs.python.org/3/library/http.cookies.html).
->
+> The http request headers sent by the user agent. Instance of 
+> [email.message.Message](https://docs.python.org/3/library/email.message.html).
+
+`dialog.request.method`
+
+> The request method ("GET", "POST", etc).
+
+`dialog.request.url`
+
+> The requested url (without the query string).
 
 If the request is sent with the GET method, or the POST method with
 enctype or content-type set to "application/x-www-form-urlencoded" or 
@@ -227,15 +231,15 @@ enctype or content-type set to "application/x-www-form-urlencoded" or
 For requests sent with other methods or content-type (eg Ajax requests with
 JSON content) :
 
-`dialog.request.raw`
-
-> Request body as bytes.
-  
 `dialog.request.json()`
 
 > Function with no argument that returns a dictionary built as the parsing of
 > the request body.
 
+`dialog.request.raw`
+
+> Request body as bytes.
+  
 `dialog.response`
 -----------------
 The attributes that can be set to `dialog.response` are:
