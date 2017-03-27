@@ -31,5 +31,5 @@ def redirection(dialog):
     return dialog.redirection('/foo')
 
 def error403(dialog):
-    return dialog.error(403, 'Access refused')
+    return dialog.error(403)
     

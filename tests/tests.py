@@ -95,6 +95,7 @@ class Test(BaseTestCase):
         opener = urllib.request.build_opener(NoRedirection)
         response = opener.open('http://localhost:8080/error403')
         self.assertEqual(response.code, 403)
+        assert response.reason.startswith("('Forbidden'")
         
     def test_error404(self):
         opener = urllib.request.build_opener(NoRedirection)
