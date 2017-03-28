@@ -60,7 +60,7 @@ The name of a _registered module_ must be in the main script namespace. An
 import like `import scripts.views` doesn't register the module __views__ ; it
 must be imported with `from scripts import views`.
 
-If a module is imported in the main module but must not be registered, put
+If a module is imported in the main module but must _not_ be registered, put
 this line at the beginning :
 
 ```python
