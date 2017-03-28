@@ -102,6 +102,21 @@ class Test(BaseTestCase):
         response = opener.open('http://localhost:8080/i_don_t_exist')
         self.assertEqual(response.code, 404)
 
+    def test_func_in_package_is_not_exposed(self):
+        opener = urllib.request.build_opener(NoRedirection)
+        response = opener.open('http://localhost:8080/func_init')
+        self.assertEqual(response.code, 404)
+    
+    def test_url_with_trailing_slash(self):
+        req = request('/trailing_slash/')
+        self.assertEqual(req.read(), b"trailing slash")
+
+    def test_url_without_trailing_slash_redirects(self):
+        opener = urllib.request.build_opener(NoRedirection)
+        response = opener.open('http://localhost:8080/trailing_slash')
+        self.assertEqual(response.code, 302)
+        self.assertEqual(response.headers['Location'], '/trailing_slash/')
+        
 # start server in a thread
 from bihan import application
 from scripts import index

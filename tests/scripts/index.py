@@ -32,4 +32,7 @@ def redirection(dialog):
 
 def error403(dialog):
     return dialog.error(403)
-    
+
+def trailing_slash(dialog):
+    return 'trailing slash'
+trailing_slash.url = '/trailing_slash/'

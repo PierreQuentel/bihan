@@ -306,6 +306,14 @@ class application(http.server.SimpleHTTPRequestHandler):
         kind, arg = self.resolve(self.url)
         
         if kind is None:
+            # if self.url doesn't end with '/', try with adding one
+            if not self.url.endswith('/'):
+                kind, arg = self.resolve(self.url + '/')
+                if kind not in [None, 'file']:
+                    # redirect to the url with trailing slash
+                    self.response.headers["Location"] = self.url + '/'
+                    return self.done(302, io.BytesIO())
+                        
             return self.send_error(404, "File not found", 
                 "No file matching {}".format(self.url))
 
@@ -426,6 +434,7 @@ class application(http.server.SimpleHTTPRequestHandler):
                     msg = "url {} matches at least 2 patterns : {}"
                     raise DispatchError(msg.format(url, patterns))
                 target = (obj, mo.groupdict())
+
         if target is not None:
             return 'func', target
 
