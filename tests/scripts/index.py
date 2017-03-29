@@ -3,36 +3,56 @@ import mimetypes
 
 from scripts.utils import format_response
 
-def index(dialog):
-    return 'hello'
+class index:
 
-def show_argument(dialog):
-    return json.dumps(dialog.request.fields)
+    def get(self):
+        return 'hello'
+
+class show_argument:
     
-def test_smart_url(dialog):
-    return dialog.request.fields['x']
-test_smart_url.url = 'test_smart_url/<x>'
+    def get(self):
+        return json.dumps(self.request.fields)
+    
+    post = get
 
-def upload_form(dialog):
-    return dialog.template("upload.html")
+class test_smart_url:
+    
+    def get(self):
+        return self.request.fields['x']
+    get.url = 'test_smart_url/<x>'
 
-def upload(dialog):
-    fobj = dialog.request.fields['info']
-    mtype, encoding = mimetypes.guess_type(fobj.filename)
-    dialog.response.headers.set_type(mtype)
-    return fobj.file.read()
+class upload_form:
+    
+    def get(self):
+        return self.template("upload.html")
 
-def smart_func(dialog):
-    fields = dialog.request.fields
-    return fields['x'], fields['y']
-smart_func.url = '/very_smart/<x>/url/<y>'
+class upload:
+    
+    def post(self):
+        fobj = self.request.fields['info']
+        mtype, encoding = mimetypes.guess_type(fobj.filename)
+        self.response.headers.set_type(mtype)
+        return fobj.file.read()
 
-def redirection(dialog):
-    return dialog.redirection('/foo')
+class smart_func:
+    
+    def get(self):
+        fields = self.request.fields
+        return fields['x'], fields['y']
+    get.url = '/very_smart/<x>/url/<y>'
 
-def error403(dialog):
-    return dialog.error(403)
+class redirection:
+    
+    def get(self):
+        return self.redirection('/foo')
 
-def trailing_slash(dialog):
-    return 'trailing slash'
-trailing_slash.url = '/trailing_slash/'
+class error403:
+    
+    def get(self):
+        return self.error(403)
+
+class trailing_slash:
+    
+    def get(self):
+        return 'trailing slash'
+    get.url = '/trailing_slash/'

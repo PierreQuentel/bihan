@@ -26,6 +26,8 @@ class HttpError(Exception):pass
 class DispatchError(Exception): pass
 class RoutingError(Exception): pass
 
+http_methods = ["GET", "POST", "DELETE", "PUT", "OPTIONS", "HEAD", "TRACE", 
+    "CONNECT"]
 
 class Message:
 
@@ -303,12 +305,13 @@ class application(http.server.SimpleHTTPRequestHandler):
         # default content type is text/html
         response.headers.add_header("Content-Type", "text/html")
 
-        kind, arg = self.resolve(self.url)
+        method = self.request.method.lower()
+        kind, arg = self.resolve(method, self.url)
         
         if kind is None:
             # if self.url doesn't end with '/', try with adding one
             if not self.url.endswith('/'):
-                kind, arg = self.resolve(self.url + '/')
+                kind, arg = self.resolve(method, self.url + '/')
                 if kind not in [None, 'file']:
                     # redirect to the url with trailing slash
                     self.response.headers["Location"] = self.url + '/'
@@ -339,31 +342,45 @@ class application(http.server.SimpleHTTPRequestHandler):
                 prefix = "/" + module.__prefix__.lstrip("/")
             for key in dir(module):
                 obj = getattr(module, key)
-                # Functions exposed are those defined in the module (not
-                # imported), whose name doesn't start with _, and don't have
-                # an attribute __expose__ set to False.
-                if (type(obj) is types.FunctionType 
+                # Inspect classes defined in the module (not imported)
+                if (isinstance(obj, type) 
                         and obj.__module__ == module.__name__
-                        and not key.startswith("_") 
-                        and getattr(obj, '__expose__', True)
                     ):
-                    url = obj.url if hasattr(obj, "url") else "/" + key
-                    url = "/" + (prefix + url).lstrip("/")
-                    pattern = re.sub('<(.*?)>', r'(?P<\1>[^/]+?)', url)
-                    pattern = "^" + pattern +"$"
-                    if pattern in cls.routes:
-                        msg = 'duplicate url "{}":' +"\n - in {} line {}" * 2
-                        obj2 = cls.routes[pattern]
-                        raise RoutingError(msg.format(url, 
-                            obj2.__code__.co_filename, 
-                            obj2.__code__.co_firstlineno,
-                            obj.__code__.co_filename,
-                            obj.__code__.co_firstlineno))
-                    cls.routes[pattern] = obj
-                    if (key == "index" and not hasattr(obj, "url") 
-                            and "^/$" not in cls.routes):
-                        # route path "/" to function "index"
-                        cls.routes["^/$"] = obj
+                    class_urls = getattr(obj, "urls", 
+                        [getattr(obj, "url", key).lstrip("/")])
+                    # expose methods named like HTTP methods
+                    for attr in dir(obj):
+                        method = getattr(obj, attr)
+                        if not (isinstance(method, types.FunctionType)
+                                and attr.upper() in http_methods):
+                            continue
+                        method_urls = getattr(method, "urls", 
+                            [getattr(method, "url", None)])
+                        if method_urls == [None]:
+                            method_urls = class_urls
+                        for method_url in method_urls:
+                            method_url = "/" + (prefix + method_url).lstrip("/")
+                            pattern = re.sub("<(.*?)>", r"(?P<\1>[^/]+?)", 
+                                method_url)
+                            pattern = (attr.lower(), "^" + pattern +"$")
+                            if pattern in cls.routes:
+                                # duplicate route : raise RoutingError
+                                msg = ('duplicate url "{}":' 
+                                            +"\n - in {} line {}" * 2)
+                                obj2 = cls.routes[pattern]
+                                raise RoutingError(msg.format(url, 
+                                    obj2.__code__.co_filename, 
+                                    obj2.__code__.co_firstlineno,
+                                    obj.__code__.co_filename,
+                                    obj.__code__.co_firstlineno))
+                            
+                            # map (method, regexp) to method
+                            cls.routes[pattern] = method
+                        
+                        if (key == "index" and not hasattr(method, "url") 
+                                and (attr.lower(), "^/$") not in cls.routes):
+                            # route path "/" to function "index"
+                            cls.routes[(attr.lower(), "^/$")] = method
 
     def render(self, func):
         """Run the function and send its result."""
@@ -413,7 +430,7 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.response.headers["Content-Length"] = output.tell()
         self.done(response_code, output)
 
-    def resolve(self, url):
+    def resolve(self, method, url):
         """If url matches a route defined for the application, return the
         tuple ('func', (function_object, arguments)) where function_object is 
         the function to call and arguments is a dictionary for patterns such 
@@ -423,9 +440,11 @@ class application(http.server.SimpleHTTPRequestHandler):
         """
         # Split url in elements separated by /
         elts = urllib.parse.unquote(url).lstrip("/").split("/")
-
+        
         target, patterns = None, []
-        for pattern, obj in application.routes.items():
+        for (_method, pattern), obj in application.routes.items():
+            if _method != method:
+                continue
             mo = re.match(pattern, url, flags=re.I)
             if mo:
                 patterns.append(pattern)

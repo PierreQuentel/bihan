@@ -57,7 +57,10 @@ def request(path, **kw):
     url = "http://localhost:8080{}"
     if "data" in kw:
         kw["data"] = urllib.parse.urlencode(kw["data"]).encode("utf-8")
-    return urllib.request.urlopen(url.format(path), **kw)
+        return urllib.request.urlopen(url.format(path), **kw)
+    else:
+        return urllib.request.urlopen(url.format(path))
+        
 request.__expose__ = False
 
 
@@ -75,7 +78,7 @@ class Test(BaseTestCase):
         # POST request
         req = request('/show_argument', data={'x':2, 'y': 'arg'})
         res = json.loads(req.read().decode('utf-8'))
-        self.assertEqual(res, {'x': '2', 'y': 'arg'})        
+        self.assertEqual(res, {'x': '2', 'y': 'arg'})
         
     def test_smart_url(self):
         req = request('/test_smart_url/99')
