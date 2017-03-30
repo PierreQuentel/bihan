@@ -11,7 +11,7 @@ Hello World
 ```python
 from bihan import application
 
-class hello:
+class Hello:
 
     def get(self):
         return "Hello World"
@@ -78,7 +78,7 @@ By default, bihan uses class names as urls : all the classes defined in
 the module (not those imported from another module) are accessible by their
 name.
 
-For instance, if a registered module has this function:
+For instance, if a registered module defines this class:
 
 ```python
 class User:
@@ -93,9 +93,8 @@ class User:
         return "Deleting a user"
 ```
 
-the function is mapped to the url _/user_ (urls are case-insensivite) and
-serves GET requests to this url with the method `User.get`, POST request with
-the method `User.post`, etc.
+then its method `get()` serves GET requests to the _/user_ (urls are
+case-insensivite), its method `post()` serves POST request to this url, etc.
 
 If the module defines a variable `__prefix__`, it is prepended to the url for
 all the classes in the module :
@@ -213,7 +212,7 @@ user agent. If it is not a string, it is converted by `str()`.
 Instance attributes
 ===================
 
-A method mapped to a url take a single argument, `self`. It has two main
+A method that serves a request takes a single argument, `self`. It has two main
 attributes:
 
 - `request` : holds the information sent by the user agent
