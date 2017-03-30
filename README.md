@@ -93,7 +93,7 @@ class User:
         return "Deleting a user"
 ```
 
-then its method `get()` serves GET requests to the _/user_ (urls are
+then its method `get()` serves GET requests to the url _/user_ (urls are
 case-insensivite), its method `post()` serves POST request to this url, etc.
 
 If the module defines a variable `__prefix__`, it is prepended to the url for
@@ -281,7 +281,11 @@ The attributes that can be set to `self.response` are:
 `self.response.headers`
 
 > The HTTP response headers. Instance of
-> [email.message.Message](https://docs.python.org/3/library/email.message.html)
+> [email.message.Message](https://docs.python.org/3/library/email.message.html).
+> To set the content type of the response, you can use the method 
+> `set_type()`:
+>
+>     `self.response.headers.set_type("text/plain")`
 
 `self.response.cookie`
 
