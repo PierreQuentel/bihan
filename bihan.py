@@ -1,11 +1,9 @@
 """Minimalist Python web server engine.
-Documentation at https://github.com/PierreQuentel/bihan
+Documentation at https://github.com/PierreQuentel/bihan.
 """
 
 import sys
 import os
-import imp
-import importlib
 import re
 import io
 import traceback
@@ -18,18 +16,21 @@ import email.utils
 import email.message
 import json
 import threading
+import subprocess
+import signal
 import types
-
-
-class HttpRedirection(Exception):pass
-class HttpError(Exception):pass
-class DispatchError(Exception): pass
-class RoutingError(Exception): pass
+import wsgiref.simple_server
 
 http_methods = ["GET", "POST", "DELETE", "PUT", "OPTIONS", "HEAD", "TRACE", 
     "CONNECT"]
 
+class HttpRedirection: pass
+class HttpError: pass
+class DispatchError(Exception): pass
+class RoutingError(Exception): pass
+
 class Message:
+    """Generic class for request and response objects"""
 
     def __init__(self):
         self.headers = email.message.Message()
@@ -49,22 +50,6 @@ class Dialog:
         self.root = obj.root
         self.routes = obj.routes
         self.template = obj.template
-
-
-class ErrorModule:
-    """Store information about a module that causes application
-    restarting to fail"""
-    
-    def __init__(self, exc_val, exc_tb):
-        self.exc_val = exc_val
-        self.__file__ = getattr(exc_val, 'filename', None)
-        lineno = getattr(exc_val, 'lineno', None)
-        if self.__file__ is None:
-            while exc_tb is not None:
-                self.__file__ = exc_tb.tb_frame.f_code.co_filename
-                lineno = exc_tb.tb_frame.f_lineno
-                exc_tb = exc_tb.tb_next
-        self.exc_msg = "{} line {}\n{}".format(self.__file__, lineno, exc_val)
 
 
 class ImportTracker:
@@ -168,20 +153,22 @@ class application(http.server.SimpleHTTPRequestHandler):
 
     @classmethod
     def check_changes(cls):
-        """If debug mode is set, check every 3 seconds if one of the source 
+        """If debug mode is set, check every 2 seconds if one of the source 
         files for the imported modules has changed. If so, restart the 
-        application.
+        application in a new process.
         """
         modules, mtime = tracker.imported()
+        cls.changed = False
         for module in modules:
             if mtime[module.__file__] != os.stat(module.__file__).st_mtime:
+                mtime[module.__file__] = os.stat(module.__file__).st_mtime
                 python = sys.executable
-                args = sys.argv
-                if " " in args[0]:
-                    args[0] = '"' + args[0] + '"'
-                os.execl(python, python, *args)
-                
-        threading.Timer(3.0, cls.check_changes).start()
+                cls.changed = module.__file__
+                # Pass this process id to the new process - see method run().
+                args = [python, sys.argv[0], str(os.getpid())]
+                # Restart the application in a new process
+                subprocess.call(args, shell=True)
+        threading.Timer(2.0, cls.check_changes).start()
         
     def done(self, code, infile):
         """Send response, cookies, response headers and the data read from 
@@ -285,18 +272,20 @@ class application(http.server.SimpleHTTPRequestHandler):
             if (type(obj) is types.ModuleType
                     and getattr(obj, "__expose__", True)
                     and hasattr(obj, "__file__")
-                    and obj.__file__.startswith(os.getcwd())
-                    ):
+                    and obj.__file__.startswith(os.getcwd())):
                 cls.registered.append(obj)
 
         return cls.registered
                        
     def handle(self):
         """Process the data received"""
-        if application.error:
-            # an exception was raised when loading modules
-            exc_msg = application.registered[0].exc_msg.encode("utf-8")
-            return self.done(500, io.BytesIO(exc_msg))
+        if getattr(application, "changed", False):
+            # If application.changed is set, it means that the attempt to
+            # restart the application because of a change in some file
+            # failed. application.changed is the name of this file
+            msg =  "Error reloading {}".format(application.changed)
+            return self.done(500, io.BytesIO(msg.encode("utf-8")))
+
         response = self.response
         self.elts = urllib.parse.urlparse(self.env["PATH_INFO"] +
             "?" + self.env["QUERY_STRING"])
@@ -309,11 +298,11 @@ class application(http.server.SimpleHTTPRequestHandler):
         kind, arg = self.resolve(method, self.url)
         
         if kind is None:
-            # if self.url doesn't end with '/', try with adding one
+            # If self.url doesn't end with '/' and if self.url + '/' is mapped
+            # to a function, redirect to self.url + '/'
             if not self.url.endswith('/'):
                 kind, arg = self.resolve(method, self.url + '/')
                 if kind not in [None, 'file']:
-                    # redirect to the url with trailing slash
                     self.response.headers["Location"] = self.url + '/'
                     return self.done(302, io.BytesIO())
                         
@@ -343,44 +332,46 @@ class application(http.server.SimpleHTTPRequestHandler):
             for key in dir(module):
                 obj = getattr(module, key)
                 # Inspect classes defined in the module (not imported)
-                if (isinstance(obj, type) 
-                        and obj.__module__ == module.__name__
-                    ):
-                    class_urls = getattr(obj, "urls", 
-                        [getattr(obj, "url", key).lstrip("/")])
-                    # expose methods named like HTTP methods
-                    for attr in dir(obj):
-                        method = getattr(obj, attr)
-                        if not (isinstance(method, types.FunctionType)
-                                and attr.upper() in http_methods):
-                            continue
-                        method_urls = getattr(method, "urls", 
-                            [getattr(method, "url", None)])
-                        if method_urls == [None]:
-                            method_urls = class_urls
-                        for method_url in method_urls:
-                            method_url = "/" + (prefix + method_url).lstrip("/")
-                            pattern = re.sub("<(.*?)>", r"(?P<\1>[^/]+?)", 
-                                method_url)
-                            pattern = (attr.lower(), "^" + pattern +"$")
-                            if pattern in cls.routes:
-                                # duplicate route : raise RoutingError
-                                msg = ('duplicate url "{}":' 
-                                            +"\n - in {} line {}" * 2)
-                                obj2 = cls.routes[pattern]
-                                raise RoutingError(msg.format(url, 
-                                    obj2.__code__.co_filename, 
-                                    obj2.__code__.co_firstlineno,
-                                    obj.__code__.co_filename,
-                                    obj.__code__.co_firstlineno))
-                            
-                            # map (method, regexp) to method
-                            cls.routes[pattern] = method
+                if not (isinstance(obj, type) 
+                        and obj.__module__ == module.__name__):
+                    continue
+                class_urls = getattr(obj, "urls", 
+                    [getattr(obj, "url", key).lstrip("/")])
+                # expose methods named like HTTP methods
+                for attr in dir(obj):
+                    method = getattr(obj, attr)
+                    if not (isinstance(method, types.FunctionType)
+                            and attr.upper() in http_methods):
+                        continue
+                    method_urls = getattr(method, "urls", 
+                        [getattr(method, "url", None)])
+                    if method_urls == [None]:
+                        method_urls = class_urls
+                    for method_url in method_urls:
+                        method_url = "/" + (prefix + method_url).lstrip("/")
+                        # Regular expression for smart urls
+                        pattern = re.sub("<(.*?)>", r"(?P<\1>[^/]+?)", 
+                            method_url)
+                        # A pattern is the tuple (request method, url regexp)
+                        pattern = (attr.lower(), "^" + pattern +"$")
+                        if pattern in cls.routes:
+                            # duplicate route : raise RoutingError
+                            msg = ('duplicate url "{}":' 
+                                        +"\n - in {} line {}" * 2)
+                            obj2 = cls.routes[pattern]
+                            raise RoutingError(msg.format(url, 
+                                obj2.__code__.co_filename, 
+                                obj2.__code__.co_firstlineno,
+                                obj.__code__.co_filename,
+                                obj.__code__.co_firstlineno))
                         
-                        if (key == "index" and not hasattr(method, "url") 
-                                and (attr.lower(), "^/$") not in cls.routes):
-                            # route path "/" to function "index"
-                            cls.routes[(attr.lower(), "^/$")] = method
+                        cls.routes[pattern] = method
+                    
+                    if (key.lower() == "index" 
+                            and not hasattr(method, "url") 
+                            and (attr.lower(), "^/$") not in cls.routes):
+                        # Map path "/" to function "index"
+                        cls.routes[(attr.lower(), "^/$")] = method
 
     def render(self, func):
         """Run the function and send its result."""
@@ -433,8 +424,7 @@ class application(http.server.SimpleHTTPRequestHandler):
     def resolve(self, method, url):
         """If url matches a route defined for the application, return the
         tuple ('func', (function_object, arguments)) where function_object is 
-        the function to call and arguments is a dictionary for patterns such 
-        as url/<arg>.
+        the function to call and arguments is a dictionary for smart urls.
         Otherwise return the tuple ('file', path) where path is built from the
         application root and the parts in url.
         """
@@ -467,16 +457,24 @@ class application(http.server.SimpleHTTPRequestHandler):
     @classmethod
     def run(cls, host="localhost", port=8000, debug=False):
         """Start the built-in server"""
-        from wsgiref.simple_server import make_server
-        cls.httpd = make_server(host, port, application)
+        cls.httpd = wsgiref.simple_server.make_server(host, port, application)
         print("Serving on port {}".format(port))
+        if len(sys.argv) > 1:
+            # If there is a second argument in sys.argv, it is the id of a 
+            # previous process that started the current process because of a 
+            # change in a file (see check_changes).
+            # If we get here, it means that this change didn't cause any
+            # error. The previous process must be killed so that the current
+            # process will serve next requests.
+            pid = sys.argv[1]
+            os.kill(int(pid), signal.SIGTERM)
         cls.load_routes()
         if debug not in [True, False]:
             raise ValueError("debug must be True or False")
         cls.debug = debug
         if cls.debug:
             cls.check_changes()
-        cls.httpd.serve_forever(poll_interval=0.5)
+        cls.httpd.serve_forever()
 
     def send_error(self, code, expl, msg=""):
         """Send error message"""
@@ -526,7 +524,7 @@ class application(http.server.SimpleHTTPRequestHandler):
 
     def template(self, filename, **kw):
         """If the template engine patrom is installed, use it to render the
-        template file with the specified key/values
+        template file with the specified key/values.
         """
         from patrom import TemplateParser, TemplateError
         parser = TemplateParser()
