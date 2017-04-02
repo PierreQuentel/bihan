@@ -9,9 +9,9 @@ with open('README.rst', encoding='utf-8') as fobj:
 setup(
     name='bihan',
 
-    version='0.0.4',
+    version='0.0.5',
 
-    description='bihan is a Python web tool',
+    description='Minimalist Python web framework',
     
     long_description = LONG_DESCRIPTION,
 
