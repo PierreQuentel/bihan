@@ -1,5 +1,3 @@
-__expose__ = False
-
 import os
 import json
 import random
