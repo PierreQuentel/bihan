@@ -139,11 +139,11 @@ The url(s) can also be specified at the method level:
 class User:
 
     def get(self):
-        # serves GET requests on url "/users"
+        """Serves GET requests on url /user."""
     
     def post(self):
-        # serves POST requests on urls "/users" and "/users/<id>"
-    post.urls = ["/users", "/users/<id>"]
+        """Serves POST requests on urls /user and /user/<id>."""
+    post.urls = ["/user", "/user/<id>"]
 ```
 
 Smart URLs
