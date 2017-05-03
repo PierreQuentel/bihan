@@ -285,7 +285,7 @@ The attributes that can be set to `self.response` are:
 > To set the content type of the response, you can use the method 
 > `set_type()`:
 >
->     `self.response.headers.set_type("text/plain")`
+>     self.response.headers.set_type("text/plain")
 
 `self.response.cookie`
 
