@@ -24,8 +24,16 @@ import wsgiref.simple_server
 http_methods = ["GET", "POST", "DELETE", "PUT", "OPTIONS", "HEAD", "TRACE", 
     "CONNECT"]
 
-class HttpRedirection: pass
-class HttpError: pass
+class HttpRedirection:
+    
+    def __init__(self, url):
+        self.url = url
+
+class HttpError:
+    
+    def __init__(self, code):
+        self.code = code
+
 class DispatchError(Exception): pass
 class RoutingError(Exception): pass
 
@@ -57,6 +65,7 @@ class ImportTracker:
 
     _imported = set(["__main__"])
     modules = []
+    mtime = {}
  
     def find_module(self, fullname, path=None):
         self._imported.add(fullname)
@@ -69,16 +78,14 @@ class ImportTracker:
         """
         if self.modules:
             return self.modules, self.mtime
-        self.modules = modules = [sys.modules["__main__"]]
-        self.mtime = {}
         for fullname in self._imported:
             module = sys.modules.get(fullname)
             if (module and hasattr(module, "__file__")
                     and module.__file__.startswith(os.getcwd())):
-                modules.append(module)
-        for module in modules:
+                self.modules.append(module)
+        for module in self.modules:
             self.mtime[module.__file__] = os.stat(module.__file__).st_mtime
-        return modules, self.mtime
+        return self.modules, self.mtime
 
 tracker = ImportTracker()
 sys.meta_path.insert(0, tracker)
@@ -307,7 +314,7 @@ class application(http.server.SimpleHTTPRequestHandler):
                     return self.done(302, io.BytesIO())
                         
             return self.send_error(404, "File not found", 
-                "No file matching {}".format(self.url))
+                "No route for {} with method {}".format(self.url, method))
 
         if kind=='file':
             if not os.path.exists(arg):
@@ -379,10 +386,10 @@ class application(http.server.SimpleHTTPRequestHandler):
             # run function with Dialog(self) as positional argument
             result = func(Dialog(self))
             if isinstance(result, HttpRedirection):
-                self.response.headers["Location"] = result.args[0]
+                self.response.headers["Location"] = result.url
                 return self.done(302, io.BytesIO())
             elif isinstance(result, HttpError):
-                return self.done(result.args[0], io.BytesIO())
+                return self.done(result.code, io.BytesIO())
         except: # exception : print traceback
             result = io.StringIO()
             if application.debug:
@@ -480,6 +487,8 @@ class application(http.server.SimpleHTTPRequestHandler):
         """Send error message"""
         self.status = "{} {}".format(code, expl)
         self.response.headers.set_type("text/plain")
+        if not self.debug:
+            msg = expl
         self.response.body = msg.encode(self.response.encoding)
 
     def send_static(self, fs_path):
