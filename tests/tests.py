@@ -19,7 +19,6 @@ class TestServerThread(threading.Thread):
     def run(self):
         application.load_routes()
         self.server = make_server('localhost', 8080, application)
-        self.test_object.HOST, self.test_object.PORT = self.server.socket.getsockname()
         self.test_object.server_started.set()
         self.test_object = None
         try:
