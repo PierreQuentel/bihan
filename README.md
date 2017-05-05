@@ -171,9 +171,10 @@ attributes of `self` below).
 
 Mapping control
 ---------------
-bihan makes sure that a url matches only one method in a _registered module_.
-Otherwise it raises a `RoutingError`, with a message giving the scripts and
-methods that define the same url.
+If the same tuple (HTTP method, url) is defined for 2 different methods, a
+`RoutingError` is raised, with a message giving the scripts and methods that
+define the same url.
+
 
 Application attributes and methods
 ==================================
@@ -210,8 +211,9 @@ Application attributes and methods
 Response body
 =============
 
-The return value of the method is the body of the response sent to the
-user agent. If it is not a string, it is converted by `str()`.
+The response body is the return value of the method that serves the request.
+If it is not a string, it is converted by `str()`.
+
 
 Instance attributes
 ===================
@@ -231,7 +233,6 @@ The attributes of _self.request_ are :
 
 > The cookies sent by the user agent. Instance of
 > [http.cookies.SimpleCookie](https://docs.python.org/3/library/http.cookies.html).
->
 
 `self.request.encoding`
 
