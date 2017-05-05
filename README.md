@@ -11,7 +11,7 @@ Hello World
 ```python
 from bihan import application
 
-class Hello:
+class hello:
 
     def get(self):
         return "Hello World"
@@ -22,6 +22,10 @@ application.run()
 This script starts a built-in web server on port 8000. Enter
 _http://localhost:8000/hello_ in the browser address bar, it shows the
 "Hello World" message.
+
+For PEP8 experts : the class name uses the naming convention for functions, ie
+lowercase, for a better match with urls, which are usually written in
+lowercase.
 
 URL dispatching
 ===============
@@ -49,7 +53,7 @@ import menu
 # scripts is a package, also in the same directory
 from scripts import views
 
-class Hello:
+class hello:
 
     def get(self):
         now = datetime.datetime.now()
@@ -81,7 +85,7 @@ name.
 For instance, if a registered module defines this class:
 
 ```python
-class User:
+class user:
 
     def get(self):
         return "Here is information about a user"
@@ -93,8 +97,8 @@ class User:
         return "Deleting a user"
 ```
 
-then its method `get()` serves GET requests to the url _/user_ (urls are
-case-insensivite), its method `post()` serves POST request to this url, etc.
+then its method `get()` serves GET requests to the url _/user_ , its method
+`post()` serves POST request to this url, etc.
 
 If the module defines a variable `__prefix__`, it is prepended to the url for
 all the classes in the module :
@@ -102,19 +106,19 @@ all the classes in the module :
 ```python
 __prefix__ = "library"
 
-class Users:
+class user:
     ...
 ```
-will map the url _library/users_ to the class `Users`
+will map the url _library/user_ to the class `user`
 
-Special case : if a class is called `Index`, it is also mapped by default to
+Special case : if a class is called `index`, it is also mapped by default to
 the url _/_.
 
 If the class serves other urls than the class name (including _smart urls_,
 see below), set its attribute _url_ (a single url) or _urls_ (a list of urls):
 
 ```python
-class User:
+class user:
 
     url = '/user/<id>'
     
@@ -125,7 +129,7 @@ class User:
 or
 
 ```python
-class User:
+class user:
 
     urls = ['/user', '/user/<id>']
     
@@ -136,7 +140,7 @@ class User:
 The url(s) can also be specified at the method level:
 
 ```python
-class User:
+class user:
 
     def get(self):
         """Serves GET requests on url /user."""
@@ -154,14 +158,14 @@ available as one the request fields.
 For instance :
 
 ```python
-class Show:
+class show:
 
     def get(self):
         ...
     get.url = "/show/<num>"
 ```
 
-The method `Show.get()` is called for urls like _/show/76_, and the value (76)
+The method `show.get()` is called for urls like _/show/76_, and the value (76)
 is available in the function body as `self.request.fields["num"]` (see the
 attributes of `self` below).
 
