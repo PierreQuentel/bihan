@@ -23,9 +23,9 @@ This script starts a built-in web server on port 8000. Enter
 _http://localhost:8000/hello_ in the browser address bar, it shows the
 "Hello World" message.
 
-For PEP8 experts : the class name uses the naming convention for functions, ie
-lowercase, for a better match with urls, which are usually written in
-lowercase.
+For PEP8 experts : in this page, the class name uses the naming convention for
+functions, ie lowercase, for a better match with urls, which are usually
+written in lowercase. The CapWord convention (`class Hello`) will also work.
 
 URL dispatching
 ===============
