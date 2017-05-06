@@ -73,7 +73,7 @@ If a module is imported in the main module but must _not_ be registered, put
 this line at the beginning :
 
 ```python
-__expose__ = False
+__register__ = False
 ```
 
 Mapping a url to a class in a registered module

@@ -264,7 +264,7 @@ class application(http.server.SimpleHTTPRequestHandler):
     def get_registered(cls):
         """Return the registered modules : those in the main module namespace
         whose source is located in the application directory and don't have
-        an attribute __expose__ set to False.
+        an attribute __register__ set to False.
         """
         if cls.registered:
             # registered modules are cached in a class attribute
@@ -277,7 +277,7 @@ class application(http.server.SimpleHTTPRequestHandler):
                 continue
             obj = getattr(main, key)
             if (type(obj) is types.ModuleType
-                    and getattr(obj, "__expose__", True)
+                    and getattr(obj, "__register__", True)
                     and hasattr(obj, "__file__")
                     and obj.__file__.startswith(os.getcwd())):
                 cls.registered.append(obj)

@@ -59,8 +59,6 @@ def request(path, **kw):
         return urllib.request.urlopen(url.format(path), **kw)
     else:
         return urllib.request.urlopen(url.format(path))
-        
-request.__expose__ = False
 
 
 class Test(BaseTestCase):
