@@ -245,7 +245,7 @@ class application(http.server.SimpleHTTPRequestHandler):
             data = {}
             for k in body.keys():
                 if isinstance(body[k], list): # several fields with same name
-                    values = [x.value for x in body[k]]
+                    values = [x if x.file else x.value for x in body[k]]
                     if k.endswith('[]'):
                         data[k[:-2]] = values
                     else:
