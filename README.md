@@ -88,13 +88,13 @@ For instance, if a registered module defines this class:
 class user:
 
     def get(self):
-        return "Here is information about a user"
+        """Returns information about a user."""
 
     def post(self):
-        return "Replacing or creating a user"
+        """Replace or create a user."""
     
     def delete(self):
-        return "Deleting a user"
+        """Delete a user."""
 ```
 
 then its method `get()` serves GET requests to the url _/user_ , its method
@@ -212,7 +212,14 @@ Response body
 =============
 
 The response body is the return value of the method that serves the request.
-If it is not a string, it is converted by `str()`.
+
+If the return value is a bytes objects, it is returned unmodified.
+
+If it is a string, it is encoded with the attribute `encoding` of
+`self.response` (see below).
+
+If it is another type, it is converted into a string by `str()` and encoded
+with `self.response.encoding`.
 
 
 Instance attributes
