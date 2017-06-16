@@ -32,7 +32,7 @@ def requires_level(role):
     
 data_dir = utils.data_dir
 
-class Add_user:
+class add_user:
 
     @requires_level("admin")
     def post(self):
@@ -63,7 +63,7 @@ class Add_user:
         )   
     
 
-class Authent:
+class authent:
     
     def post(self):
         mail = self.request.fields['mail']
@@ -82,7 +82,7 @@ class Authent:
             message="Permission refused")
 
     
-class Create_users_db:
+class create_users_db:
     
     def get(self):
         if utils.has_users():
@@ -103,7 +103,7 @@ class Create_users_db:
         
         return self.redirection("/")
 
-class Del_User:
+class del_User:
 
     @requires_level("admin")
     def post(self):
@@ -121,7 +121,7 @@ class Del_User:
         )
             
 
-class Logout:
+class logout:
 
     def get(self):
         self.response.cookies["user"] = ""
@@ -129,7 +129,7 @@ class Logout:
         return self.redirection("/")
 
 
-class List_users:
+class list_users:
 
     @requires_level("admin")
     def get(self):
@@ -140,7 +140,7 @@ class List_users:
         )
 
 
-class Reset_pw:
+class reset_pw:
 
     @requires_level("manager")
     def post(self):

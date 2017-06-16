@@ -1,6 +1,6 @@
 from scripts import utils
 
-class Index:
+class index:
 
     def get(self):
         if not utils.has_users():
@@ -13,3 +13,13 @@ class Index:
             role=utils.role(self)
         )
 
+
+class other:
+    
+    def get(self):
+        return "ok"
+
+class r2other:
+    
+    def get(self):
+        return self.routes
