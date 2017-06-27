@@ -36,6 +36,7 @@ class add_user:
 
     @requires_level("admin")
     def post(self):
+        """Add a new user in the database."""
         mail = self.request.fields['mail']
         role = self.request.fields['role']
         password = utils.gen_password()
@@ -85,6 +86,7 @@ class authent:
 class create_users_db:
     
     def get(self):
+        """Create users database."""
         if utils.has_users():
             return self.template("info.html",
                 title="Error",
@@ -103,10 +105,11 @@ class create_users_db:
         
         return self.redirection("/")
 
-class del_User:
+class del_user:
 
     @requires_level("admin")
     def post(self):
+        """Delete a user from the database."""
         mail = self.request.fields["mail"]
         users = utils.get_users()
         for i, user in enumerate(users):
@@ -124,6 +127,7 @@ class del_User:
 class logout:
 
     def get(self):
+        """Log out."""
         self.response.cookies["user"] = ""
         self.response.cookies["user"]["expires"] = 0
         return self.redirection("/")
@@ -133,6 +137,7 @@ class list_users:
 
     @requires_level("admin")
     def get(self):
+        """List users."""
         users = utils.get_users()
         return self.template("list_users.html",
             title="Users list",
@@ -144,6 +149,7 @@ class reset_pw:
 
     @requires_level("manager")
     def post(self):
+        """Reset user password."""
         mail = self.request.fields["mail"]
         password = self.request.fields["password"]
     

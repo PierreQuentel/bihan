@@ -3,6 +3,7 @@ from scripts import utils
 class index:
 
     def get(self):
+        """Index page."""
         if not utils.has_users():
             return self.template("init_users.html",
                 title="Create users database"
