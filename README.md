@@ -165,9 +165,9 @@ class show:
     get.url = "/show/<num>"
 ```
 
-The method `show.get()` is called for urls like _/show/76_, and the value (76)
-is available in the function body as `self.request.fields["num"]` (see the
-attributes of `self` below).
+The method `show.get()` is called for urls like _/show/76_, and the value 
+(the string "76") is available in the function body as
+`self.request.fields["num"]` (see the attributes of `self` below).
 
 Mapping control
 ---------------
