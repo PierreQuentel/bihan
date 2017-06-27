@@ -21,16 +21,16 @@ import signal
 import types
 import wsgiref.simple_server
 
-http_methods = ["GET", "POST", "DELETE", "PUT", "OPTIONS", "HEAD", "TRACE", 
+http_methods = ["GET", "POST", "DELETE", "PUT", "OPTIONS", "HEAD", "TRACE",
     "CONNECT"]
 
 class HttpRedirection:
-    
+
     def __init__(self, url):
         self.url = url
 
 class HttpError:
-    
+
     def __init__(self, code):
         self.code = code
 
@@ -66,13 +66,13 @@ class ImportTracker:
     _imported = set(["__main__"])
     modules = []
     mtime = {}
- 
+
     def find_module(self, fullname, path=None):
         self._imported.add(fullname)
         return None
 
     def imported(self):
-        """Return all the imported modules (registered or not) in the 
+        """Return all the imported modules (registered or not) in the
         application directory and store their last modification time. Used
         to detect changes and reload the server if necessary.
         """
@@ -101,7 +101,7 @@ class application(http.server.SimpleHTTPRequestHandler):
     static = {'/static': os.path.join(os.getcwd(), 'static')}
 
     def __init__(self, environ, start_response):
-        
+
         self.env = environ
         self.start_response = start_response
 
@@ -109,7 +109,7 @@ class application(http.server.SimpleHTTPRequestHandler):
         path = self.env["PATH_INFO"]
         if self.env["QUERY_STRING"]:
             path += "?"+self.env["QUERY_STRING"]
-        
+
         self.request_version = self.env["SERVER_PROTOCOL"]
         self.requestline = "{} {} {}".format(self.env["REQUEST_METHOD"],
             path, self.request_version)
@@ -120,9 +120,9 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.request = request = Message()
         request.url = self.env["PATH_INFO"]
         request.method = self.env["REQUEST_METHOD"]
-        
+
         for key in self.env:
-            if key=="HTTP_COOKIE":
+            if key == "HTTP_COOKIE":
                 request.cookies = http.cookies.SimpleCookie(self.env[key])
             elif key.startswith("HTTP_"):
                 request.headers[key[5:].replace('_', '-')] = self.env[key]
@@ -213,7 +213,7 @@ class application(http.server.SimpleHTTPRequestHandler):
             # Get encoding of request data
             charset = "iso-8859-1"
             for key in request.headers:
-                mo = re.search("charset\s*=(.*)$", request.headers[key])
+                mo = re.search(r"charset\s*=(.*)$", request.headers[key])
                 if mo:
                     charset = mo.groups()[0]
                     break
@@ -223,7 +223,7 @@ class application(http.server.SimpleHTTPRequestHandler):
 
             has_keys = True
             if "Content-Type" in request.headers:
-                ctype, pdict = cgi.parse_header(request.headers["Content-Type"])
+                ctype, _ = cgi.parse_header(request.headers["Content-Type"])
                 has_keys = ctype == "application/x-www-form-urlencoded" or \
                     ctype.startswith("multipart/")
 
@@ -290,13 +290,27 @@ class application(http.server.SimpleHTTPRequestHandler):
             # If application.changed is set, it means that the attempt to
             # restart the application because of a change in some file
             # failed. application.changed is the name of this file
-            msg =  "Error reloading {}".format(application.changed)
+            msg = "Error reloading {}".format(application.changed)
             return self.done(500, io.BytesIO(msg.encode("utf-8")))
 
         response = self.response
         self.elts = urllib.parse.urlparse(self.env["PATH_INFO"] +
             "?" + self.env["QUERY_STRING"])
         self.url = self.elts[2]
+        print(self.url)
+        
+        # special url "__doc__" returns a JSON object with documentation
+        if self.url == "/__doc__":
+            doc = []
+            for (http_method, pattern), method in application.routes.items():
+                doc.append({'http_method': http_method, 'url': pattern[1:-1],
+                    'method': method.__qualname__,
+                    'doc': method.__doc__,
+                    'script': sys.modules[method.__module__].__file__
+                })
+            self.response.headers.set_type('application/json')
+            res = json.dumps(doc, indent=4)
+            return self.done(200, io.BytesIO(res.encode("utf-8")))
 
         # default content type is text/html
         response.headers.add_header("Content-Type", "text/html")
@@ -316,7 +330,7 @@ class application(http.server.SimpleHTTPRequestHandler):
             return self.send_error(404, "File not found", 
                 "No route for {} with method {}".format(self.url, method))
 
-        if kind=='file':
+        if kind == 'file':
             if not os.path.exists(arg):
                 return self.send_error(404, "File not found", 
                     "No file matching {}".format(self.url))
