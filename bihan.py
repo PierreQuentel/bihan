@@ -165,16 +165,17 @@ class application(http.server.SimpleHTTPRequestHandler):
         application in a new process.
         """
         modules, mtime = tracker.imported()
-        cls.changed = False
         for module in modules:
             if mtime[module.__file__] != os.stat(module.__file__).st_mtime:
                 mtime[module.__file__] = os.stat(module.__file__).st_mtime
                 python = sys.executable
-                cls.changed = module.__file__
                 # Pass this process id to the new process - see method run().
                 args = [python, sys.argv[0], str(os.getpid())]
                 # Restart the application in a new process
                 subprocess.call(args, shell=True)
+                # if we get here, something wrong happened
+                cls.changed = module.__file__
+                    
         threading.Timer(2.0, cls.check_changes).start()
         
     def done(self, code, infile):
@@ -287,9 +288,10 @@ class application(http.server.SimpleHTTPRequestHandler):
     def handle(self):
         """Process the data received"""
         if getattr(application, "changed", False):
-            # If application.changed is set, it means that the attempt to
-            # restart the application because of a change in some file
-            # failed. application.changed is the name of this file
+            # If application.changed is set, it means that we are in debug
+            # mode and the attempt to restart the application because of a
+            # change in some file failed. application.changed is the name of
+            # this file. It is set in method check_changes().
             msg = "Error reloading {}".format(application.changed)
             return self.done(500, io.BytesIO(msg.encode("utf-8")))
 
@@ -297,7 +299,6 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.elts = urllib.parse.urlparse(self.env["PATH_INFO"] +
             "?" + self.env["QUERY_STRING"])
         self.url = self.elts[2]
-        print(self.url)
         
         # special url "__doc__" returns a JSON object with documentation
         if self.url == "/__doc__":
