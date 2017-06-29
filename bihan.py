@@ -378,14 +378,15 @@ class application(http.server.SimpleHTTPRequestHandler):
                         pattern = (attr.lower(), "^" + pattern +"$")
                         if pattern in cls.routes:
                             # duplicate route : raise RoutingError
-                            msg = ('duplicate url "{}":' 
+                            msg = ('duplicate mapping for "{} {}":' 
                                         +"\n - in {} line {}" * 2)
                             obj2 = cls.routes[pattern]
-                            raise RoutingError(msg.format(url, 
+                            raise RoutingError(msg.format(attr.upper(),
+                                method_url, 
                                 obj2.__code__.co_filename, 
                                 obj2.__code__.co_firstlineno,
-                                obj.__code__.co_filename,
-                                obj.__code__.co_firstlineno))
+                                method.__code__.co_filename,
+                                method.__code__.co_firstlineno))
                         
                         cls.routes[pattern] = method
                     
