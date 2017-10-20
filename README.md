@@ -24,6 +24,20 @@ it that I don't like or understand:
 - on debug mode, when there is a syntax error in one of the scripts, the
   built-in server crashes when I save the file
 
+bihan is a very lightweight WSGI framework, with a single file like Bottle.
+Its design principles are:
+
+- requests are served by functions and classes defined in _registered modules_
+
+- classes are used if the same url can be called with different HTTP methods
+  (GET, POST...), in a REST API for example ; functions can be used when the
+  HTTP method is not relevant
+
+- by default, the function/class name is used to serve the url of the same
+  name (but the mapping can be customized if necessary)
+
+- functions, or class methods, take a single argument representing the request
+  / response dialog
 
 Installation
 ============
@@ -50,7 +64,7 @@ URL dispatching
 Registered modules
 ------------------
 bihan serves requests using the functions and classes defined in the
-_registered modules_:
+_registered modules_, which are:
 
 - the main module, ie the one where the application is started by
   `application.run()`
@@ -102,7 +116,7 @@ method (GET, POST, etc.).
 A class serves a GET request to the url by its method `get()`, a POST request
 by its method `post()`, etc.
 
-For instance, if a registered module defines includes:
+For instance, if a registered module includes:
 
 ```python
 function menu(dialog):
@@ -126,6 +140,8 @@ then the application handles:
 - GET requests to the url _/user_ with method `get` of class `user`
 - POST requests to the url _/user_ with method `post` of class `user`, etc.
 
+Customize url mapping
+---------------------
 If the module defines a variable `__prefix__`, it is prepended to the url for
 all the functions and classes in the module :
 
@@ -140,8 +156,8 @@ will map the url _library/user_ to the class `user`
 Special case : if a function or class is called `index`, it is also mapped by
 default to the url _/_.
 
-To specify another url (including _smart urls_, see below), set the attribute
-_url_ (a single url) or _urls_ (a list of urls):
+To specify another url (including _smart urls_, see below) for a class, set
+the class attribute _url_ (a single url) or _urls_ (a list of urls):
 
 ```python
 class user:
@@ -210,8 +226,7 @@ Application attributes and methods
 
 `application.root`
 
-> A path in the server file system. It is available in scripts as
-> `self.root`. Defaults to the application directory.
+> A path in the server file system. Defaults to the application directory.
 
 `application.run(host="localhost", port=8000, debug=False)`
 
@@ -245,47 +260,52 @@ The response body is the return value of the method that serves the request.
 If the return value is a bytes objects, it is returned unmodified.
 
 If it is a string, it is encoded with the attribute `encoding` of
-`self.response` (see below).
+`dialog.response` (see below).
 
 If it is another type, it is converted into a string by `str()` and encoded
-with `self.response.encoding`.
+with `dialog.response.encoding`.
 
 
-Instance attributes
-===================
+Dialog object attributes
+========================
+A functions or a class method that serves a request takes a single argument
+representing the request / response dialog.
 
-A method that serves a request takes a single argument, `self`. It has two main
-attributes:
+By convention, this _dialog object_ it is called `dialog` in functions and
+(obviously) `self` in class methods. In this documentation page, we will use
+`dialog`.
+
+It has two main attributes:
 
 - `request` : holds the information sent by the user agent
 - `response` : used to send back information (other than the response body) to
   the user agent
 
-`self.request`
+`dialog.request`
 ----------------
-The attributes of _self.request_ are :
+The attributes of _dialog.request_ are :
 
-`self.request.cookies`
+`dialog.request.cookies`
 
 > The cookies sent by the user agent. Instance of
 > [http.cookies.SimpleCookie](https://docs.python.org/3/library/http.cookies.html).
 
-`self.request.encoding`
+`dialog.request.encoding`
 
 > The encoding used by the user agent to encode request data. If one of the
 > request headers defines a value for "charset", this value is used ;
 > otherwise, it is set to "iso-8859-1".
 
-`self.request.headers`
+`dialog.request.headers`
 
 > The http request headers sent by the user agent. Instance of
 > [email.message.Message](https://docs.python.org/3/library/email.message.html).
 
-`self.request.method`
+`dialog.request.method`
 
 > The request method ("GET", "POST", etc).
 
-`self.request.url`
+`dialog.request.url`
 
 > The requested url (without the query string).
 
@@ -293,7 +313,7 @@ If the request is sent with the GET method, or the POST method with
 enctype or content-type set to "application/x-www-form-urlencoded" or
 "multipart/..." :
 
-`self.request.fields`
+`dialog.request.fields`
 
 > A dictionary for key/values received either in the query string, or in the
 > request body for POST requests, or in named arguments in _smart urls_ (see
@@ -306,62 +326,62 @@ enctype or content-type set to "application/x-www-form-urlencoded" or
 For requests sent with other methods or content-type (eg Ajax requests with
 JSON content) :
 
-`self.request.json()`
+`dialog.request.json()`
 
 > Function with no argument that returns a dictionary built as the parsing of
 > the request body.
 
-`self.request.raw`
+`dialog.request.raw`
 
 > Request body as bytes.
 
-`self.response`
+`dialog.response`
 -----------------
 The attributes that can be set to `self.response` are:
 
-`self.response.headers`
+`dialog.response.headers`
 
 > The HTTP response headers. Instance of
 > [email.message.Message](https://docs.python.org/3/library/email.message.html).
 > To set the content type of the response, you can use the method
 > `set_type()`:
 >
->     self.response.headers.set_type("text/plain")
+>     dialog.response.headers.set_type("text/plain")
 
-`self.response.cookie`
+`dialog.response.cookie`
 
 > Used to set cookies to send to the user agent with the response. Instance of
 > [http.cookies.SimpleCookie](https://docs.python.org/3/library/http.cookies.html)
 
-`self.response.encoding`
+`dialog.response.encoding`
 
 > Unicode encoding to use to convert the string returned by the function into
 > a bytestring. Defaults to "utf-8".
 
-other attributes of `self`
---------------------------
-`self.root`
+other attributes of `dialog`
+----------------------------
+`dialog.root`
 
 > Path of document root in the server file system. Set to the value of
 > `application.root`.
 
-`self.environ`
+`dialog.environ`
 
 > The WSGI environment variables.
 
-`self.error`
+`dialog.error`
 
 > Used to return an HTTP error code, eg
 >
->  `return self.error(404)`.
+>  `return dialog.error(404)`.
 
-`self.redirection`
+`dialog.redirection`
 
 > Used to perform a temporary redirection (302) to a specified URL, eg
 >
-> `return self.redirection(url)`.
+> `return dialog.redirection(url)`.
 
-`self.template(filename, **kw)`
+`dialog.template(filename, **kw)`
 
 > If the templating engine [patrom](https://github.com/PierreQuentel/patrom)
 > is installed, renders the template file at the location
