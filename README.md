@@ -49,7 +49,7 @@ Hello World
 ```python
 from bihan import application
 
-function hello(dialog):
+def hello(dialog):
     return "Hello World"
 
 application.run()
@@ -83,7 +83,7 @@ import menu
 # scripts is a package, also in the same directory
 from scripts import views
 
-function hello(dialog):
+def hello(dialog):
     now = datetime.datetime.now()
     return "Hello, it's {}:{}".format(now.hour, now.minute)
 
@@ -119,7 +119,7 @@ by its method `post()`, etc.
 For instance, if a registered module includes:
 
 ```python
-function menu(dialog):
+def menu(dialog):
     return "Application menu"
 
 class user:
@@ -205,7 +205,7 @@ available as one the request fields.
 For instance :
 
 ```python
-function show(dialog):
+def show(dialog):
     ...
 show.url = "/show/<num>"
 ```
