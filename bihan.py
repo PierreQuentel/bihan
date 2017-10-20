@@ -160,8 +160,8 @@ class application(http.server.SimpleHTTPRequestHandler):
 
     @classmethod
     def check_changes(cls):
-        """If debug mode is set, check every 2 seconds if one of the source 
-        files for the imported modules has changed. If so, restart the 
+        """If debug mode is set, check every 2 seconds if one of the source
+        files for the imported modules has changed. If so, restart the
         application in a new process.
         """
         modules, mtime = tracker.imported()
@@ -175,14 +175,14 @@ class application(http.server.SimpleHTTPRequestHandler):
                 subprocess.call(args, shell=True)
                 # if we get here, something wrong happened
                 cls.changed = module.__file__
-                    
+
         threading.Timer(2.0, cls.check_changes).start()
-        
+
     def done(self, code, infile):
-        """Send response, cookies, response headers and the data read from 
+        """Send response, cookies, response headers and the data read from
         infile.
         """
-        self.status = "{} {}".format(code, 
+        self.status = "{} {}".format(code,
             http.server.BaseHTTPRequestHandler.responses[code])
         if code == 500:
             self.response.headers.set_type("text/plain")
@@ -198,9 +198,9 @@ class application(http.server.SimpleHTTPRequestHandler):
         request.fields = {}
 
         # Get request fields from query string
-        fields = urllib.parse.parse_qs(self.env.get("QUERY_STRING", ""), 
+        fields = urllib.parse.parse_qs(self.env.get("QUERY_STRING", ""),
             keep_blank_values=1)
-        
+
         for key in fields:
             if key.endswith("[]"):
                 request.fields[key[:-2]] = fields[key]
@@ -272,7 +272,7 @@ class application(http.server.SimpleHTTPRequestHandler):
             return cls.registered
         main = sys.modules["__main__"]
         cls.registered = [main]
-    
+
         for key in dir(main):
             if key.startswith("_"):
                 continue
@@ -284,7 +284,7 @@ class application(http.server.SimpleHTTPRequestHandler):
                 cls.registered.append(obj)
 
         return cls.registered
-                       
+
     def handle(self):
         """Process the data received"""
         if getattr(application, "changed", False):
@@ -299,7 +299,7 @@ class application(http.server.SimpleHTTPRequestHandler):
         self.elts = urllib.parse.urlparse(self.env["PATH_INFO"] +
             "?" + self.env["QUERY_STRING"])
         self.url = self.elts[2]
-        
+
         # special url "__doc__" returns a JSON object with documentation
         if self.url == "/__doc__":
             doc = []
@@ -314,11 +314,11 @@ class application(http.server.SimpleHTTPRequestHandler):
             return self.done(200, io.BytesIO(res.encode("utf-8")))
 
         # default content type is text/html
-        response.headers.add_header("Content-Type", "text/html")
+        response.headers.set_type("text/html")
 
         method = self.request.method.lower()
         kind, arg = self.resolve(method, self.url)
-        
+
         if kind is None:
             # If self.url doesn't end with '/' and if self.url + '/' is mapped
             # to a function, redirect to self.url + '/'
@@ -327,16 +327,16 @@ class application(http.server.SimpleHTTPRequestHandler):
                 if kind not in [None, 'file']:
                     self.response.headers["Location"] = self.url + '/'
                     return self.done(302, io.BytesIO())
-                        
-            return self.send_error(404, "File not found", 
+
+            return self.send_error(404, "File not found",
                 "No route for {} with method {}".format(self.url, method))
 
         if kind == 'file':
             if not os.path.exists(arg):
-                return self.send_error(404, "File not found", 
+                return self.send_error(404, "File not found",
                     "No file matching {}".format(self.url))
             return self.send_static(arg)
-        
+
         func, kw = arg
         self.request.fields.update(kw)
 
@@ -350,14 +350,21 @@ class application(http.server.SimpleHTTPRequestHandler):
         for module in cls.get_registered():
             prefix = ""
             if hasattr(module, "__prefix__"):
-                prefix = "/" + module.__prefix__.lstrip("/")
+                prefix = "/" + module.__prefix__.strip("/") + "/"
+            classes, functions = [], []
             for key in dir(module):
                 obj = getattr(module, key)
-                # Inspect classes defined in the module (not imported)
-                if not (isinstance(obj, type) 
-                        and obj.__module__ == module.__name__):
+                # Inspect classes and functions defined in the module
+                if key.startswith('_'):
                     continue
-                class_urls = getattr(obj, "urls", 
+                if (type(obj) is types.FunctionType and
+                        obj.__module__ == module.__name__):
+                    functions.append((key, obj))
+                elif (isinstance(obj, type) and
+                        obj.__module__ == module.__name__):
+                    classes.append((key, obj))
+            for key, obj in classes:
+                class_urls = getattr(obj, "urls",
                     [getattr(obj, "url", key).lstrip("/")])
                 # expose methods named like HTTP methods
                 for attr in dir(obj):
@@ -365,36 +372,68 @@ class application(http.server.SimpleHTTPRequestHandler):
                     if not (isinstance(method, types.FunctionType)
                             and attr.upper() in http_methods):
                         continue
-                    method_urls = getattr(method, "urls", 
+                    method_urls = getattr(method, "urls",
                         [getattr(method, "url", None)])
                     if method_urls == [None]:
                         method_urls = class_urls
                     for method_url in method_urls:
                         method_url = "/" + (prefix + method_url).lstrip("/")
                         # Regular expression for smart urls
-                        pattern = re.sub("<(.*?)>", r"(?P<\1>[^/]+?)", 
+                        pattern = re.sub("<(.*?)>", r"(?P<\1>[^/]+?)",
                             method_url)
                         # A pattern is the tuple (request method, url regexp)
                         pattern = (attr.lower(), "^" + pattern +"$")
                         if pattern in cls.routes:
                             # duplicate route : raise RoutingError
-                            msg = ('duplicate mapping for "{} {}":' 
+                            msg = ('duplicate mapping for "{} {}":'
                                         +"\n - in {} line {}" * 2)
                             obj2 = cls.routes[pattern]
                             raise RoutingError(msg.format(attr.upper(),
-                                method_url, 
-                                obj2.__code__.co_filename, 
+                                method_url,
+                                obj2.__code__.co_filename,
                                 obj2.__code__.co_firstlineno,
                                 method.__code__.co_filename,
                                 method.__code__.co_firstlineno))
-                        
+
                         cls.routes[pattern] = method
-                    
-                    if (key.lower() == "index" 
-                            and not hasattr(method, "url") 
+
+                    if (key.lower() == "index"
+                            and not hasattr(method, "url")
                             and (attr.lower(), "^/$") not in cls.routes):
                         # Map path "/" to function "index"
                         cls.routes[(attr.lower(), "^/$")] = method
+
+            for name, function in functions:
+                urls = getattr(function, "urls",
+                    [getattr(function, "url", name)])
+                methods = getattr(function, "methods", ['GET', 'POST'])
+                methods = [x.lower() for x in methods]
+                for url in urls:
+                    url = "/" + (prefix + url).lstrip("/")
+                    for method in methods:
+                        # Regular expression for smart urls
+                        pattern = re.sub("<(.*?)>", r"(?P<\1>[^/]+?)", url)
+                        # A pattern is the tuple (request method, url regexp)
+                        pattern = (method, "^" + pattern + "$")
+                        if pattern in cls.routes:
+                            # duplicate route : raise RoutingError
+                            msg = ('duplicate mapping for "{} {}":'
+                                        +"\n - in {} line {}" * 2)
+                            obj2 = cls.routes[pattern]
+                            raise RoutingError(msg.format(method.upper(),
+                                url,
+                                obj2.__code__.co_filename,
+                                obj2.__code__.co_firstlineno,
+                                function.__code__.co_filename,
+                                function.__code__.co_firstlineno))
+
+                        cls.routes[pattern] = function
+
+                        if (name.lower() == "index"
+                                and not hasattr(function, "url")
+                                and (method, "^/$") not in cls.routes):
+                            # Map path "/" to function "index"
+                            cls.routes[(method, "^/$")] = function
 
     def render(self, func):
         """Run the function and send its result."""
@@ -425,7 +464,7 @@ class application(http.server.SimpleHTTPRequestHandler):
 
         # Build response body as a bytes stream
         output = io.BytesIO()
-        
+
         if self.request.method != "HEAD":
             if isinstance(result, bytes):
                 output.write(result)
@@ -446,14 +485,17 @@ class application(http.server.SimpleHTTPRequestHandler):
 
     def resolve(self, method, url):
         """If url matches a route defined for the application, return the
-        tuple ('func', (function_object, arguments)) where function_object is 
+        tuple ('func', (function_object, arguments)) where function_object is
         the function to call and arguments is a dictionary for smart urls.
-        Otherwise return the tuple ('file', path) where path is built from the
-        application root and the parts in url.
+
+        Otherwise, if the url points to a static directory, return the
+        tuple ('file', path_in_static_dir).
+
+        Otherwise, return (None, None)
         """
         # Split url in elements separated by /
         elts = urllib.parse.unquote(url).lstrip("/").split("/")
-        
+
         target, patterns = None, []
         for (_method, pattern), obj in application.routes.items():
             if _method != method:
@@ -474,7 +516,7 @@ class application(http.server.SimpleHTTPRequestHandler):
         head = '/' + elts[0]
         if head in self.static:
             return 'file', os.path.join(self.static[head], *elts[1:])
-        
+
         return None, None
 
     @classmethod
@@ -483,8 +525,8 @@ class application(http.server.SimpleHTTPRequestHandler):
         cls.httpd = wsgiref.simple_server.make_server(host, port, application)
         print("Serving on port {}".format(port))
         if len(sys.argv) > 1:
-            # If there is a second argument in sys.argv, it is the id of a 
-            # previous process that started the current process because of a 
+            # If there is a second argument in sys.argv, it is the id of a
+            # previous process that started the current process because of a
             # change in a file (see check_changes).
             # If we get here, it means that this change didn't cause any
             # error. The previous process must be killed so that the current
@@ -500,7 +542,7 @@ class application(http.server.SimpleHTTPRequestHandler):
         cls.httpd.serve_forever()
 
     def send_error(self, code, expl, msg=""):
-        """Send error message"""
+        """Send an error message"""
         self.status = "{} {}".format(code, expl)
         self.response.headers.set_type("text/plain")
         if not self.debug:
@@ -535,7 +577,7 @@ class application(http.server.SimpleHTTPRequestHandler):
                         fs.st_mtime, datetime.timezone.utc)
                     # remove microseconds, like in If-Modified-Since
                     last_modif = last_modif.replace(microsecond=0)
-                    
+
                     if last_modif <= ims:
                         f.close()
                         return self.done(304, io.BytesIO())

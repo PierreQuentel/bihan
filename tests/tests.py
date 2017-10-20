@@ -62,7 +62,7 @@ def request(path, **kw):
 
 
 class Test(BaseTestCase):
-    
+
     def test_basic(self):
         req = request('/')
         self.assertEqual(req.read(), b'hello')
@@ -76,7 +76,7 @@ class Test(BaseTestCase):
         req = request('/show_argument', data={'x':2, 'y': 'arg'})
         res = json.loads(req.read().decode('utf-8'))
         self.assertEqual(res, {'x': '2', 'y': 'arg'})
-        
+
     def test_smart_url(self):
         req = request('/test_smart_url/99')
         self.assertEqual(req.read(), b'99')
@@ -84,19 +84,19 @@ class Test(BaseTestCase):
     def test_very_smart_url(self):
         req = request('/very_smart/a/url/99')
         self.assertEqual(req.read(), b"('a', '99')")
-        
+
     def test_redirection(self):
         opener = urllib.request.build_opener(NoRedirection)
         response = opener.open('http://localhost:8080/redirection')
         self.assertEqual(response.code, 302)
         self.assertEqual(response.headers['Location'], '/foo')
-    
+
     def test_error403(self):
         opener = urllib.request.build_opener(NoRedirection)
         response = opener.open('http://localhost:8080/error403')
         self.assertEqual(response.code, 403)
         assert response.reason.startswith("('Forbidden'")
-        
+
     def test_error404(self):
         opener = urllib.request.build_opener(NoRedirection)
         response = opener.open('http://localhost:8080/i_don_t_exist')
@@ -106,7 +106,7 @@ class Test(BaseTestCase):
         opener = urllib.request.build_opener(NoRedirection)
         response = opener.open('http://localhost:8080/func_init')
         self.assertEqual(response.code, 404)
-    
+
     def test_url_with_trailing_slash(self):
         req = request('/trailing_slash/')
         self.assertEqual(req.read(), b"trailing slash")
@@ -116,9 +116,9 @@ class Test(BaseTestCase):
         response = opener.open('http://localhost:8080/trailing_slash')
         self.assertEqual(response.code, 302)
         self.assertEqual(response.headers['Location'], '/trailing_slash/')
-        
+
 # start server in a thread
 from bihan import application
-from scripts import index
+from scripts import classes
 
 unittest.main()

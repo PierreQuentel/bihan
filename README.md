@@ -1,6 +1,30 @@
 # bihan
 bihan (small, in breton) is a minimalist web framework.
 
+Why create yet another one when we already have well-known competitors ? Well,
+I have used Flask for some time and it's great, but there are a few things in
+it that I don't like or understand:
+
+- the magical `request` object
+
+- each script must begin with `from flask import Flask, request, ...`
+
+- the mapping between urls and functions uses a decorator, and I almost always
+  give the url name to the function ; it would be easier if the mapping
+  between url and function name was done by the framework, at least by default
+
+- to get the value of a form field, the attribute of `request` is not the same
+  for GET (`request.args`) and POST (`request.post`) requests, I don't
+  understand why
+
+- if a key is missing in `request.args` or `request.form`, a 400 error message
+  is returned, even on debug mode. Debugging would be easier with a `KeyError`
+  exception traceback
+
+- on debug mode, when there is a syntax error in one of the scripts, the
+  built-in server crashes when I save the file
+
+
 Installation
 ============
 ```pip install bihan```
@@ -11,10 +35,8 @@ Hello World
 ```python
 from bihan import application
 
-class hello:
-
-    def get(self):
-        return "Hello World"
+function hello(dialog):
+    return "Hello World"
 
 application.run()
 ```
@@ -23,19 +45,12 @@ This script starts a built-in web server on port 8000. Enter
 _http://localhost:8000/hello_ in the browser address bar, it shows the
 "Hello World" message.
 
-For PEP8 experts : in this page, the class name uses the naming convention for
-functions, ie lowercase, for a better match with urls, which are usually
-written in lowercase. The CapWord convention (`class Hello`) will also work.
-
 URL dispatching
 ===============
 Registered modules
 ------------------
-HTTP requests are sent with a method (GET, POST, PUT, etc) to a url. bihan
-maps urls to the classes defined in the _registered modules_, and uses the
-methods defined in these classes to serve the request.
-
-The _registered modules_ are:
+bihan serves requests using the functions and classes defined in the
+_registered modules_:
 
 - the main module, ie the one where the application is started by
   `application.run()`
@@ -50,14 +65,13 @@ from bihan import application
 
 # menu is a module in the same directory as this script
 import menu
+
 # scripts is a package, also in the same directory
 from scripts import views
 
-class hello:
-
-    def get(self):
-        now = datetime.datetime.now()
-        return "Hello, it's {}:{}".format(now.hour, now.minute)
+function hello(dialog):
+    now = datetime.datetime.now()
+    return "Hello, it's {}:{}".format(now.hour, now.minute)
 
 application.run()
 ```
@@ -76,15 +90,24 @@ this line at the beginning :
 __register__ = False
 ```
 
-Mapping a url to a class in a registered module
------------------------------------------------
-By default, bihan uses class names as urls : all the classes defined in
-the module (not those imported from another module) are accessible by their
-name.
+Mapping a url to a function or a class in a registered module
+-------------------------------------------------------------
+By default, all the functions and classes defined in a registered module (not
+those imported from another module) are accessible by their name. Functions
+and classes whose name starts with an underscore are ignored.
 
-For instance, if a registered module defines this class:
+A function serves all the requests sent to the url, regardless of the HTTP
+method (GET, POST, etc.).
+
+A class serves a GET request to the url by its method `get()`, a POST request
+by its method `post()`, etc.
+
+For instance, if a registered module defines includes:
 
 ```python
+function menu(dialog):
+    return "Application menu"
+
 class user:
 
     def get(self):
@@ -92,16 +115,19 @@ class user:
 
     def post(self):
         """Replace or create a user."""
-    
+
     def delete(self):
         """Delete a user."""
 ```
 
-then its method `get()` serves GET requests to the url _/user_ , its method
-`post()` serves POST request to this url, etc.
+then the application handles:
+
+- all the requests to the url _/menu_ with the function `menu`
+- GET requests to the url _/user_ with method `get` of class `user`
+- POST requests to the url _/user_ with method `post` of class `user`, etc.
 
 If the module defines a variable `__prefix__`, it is prepended to the url for
-all the classes in the module :
+all the functions and classes in the module :
 
 ```python
 __prefix__ = "library"
@@ -111,17 +137,17 @@ class user:
 ```
 will map the url _library/user_ to the class `user`
 
-Special case : if a class is called `index`, it is also mapped by default to
-the url _/_.
+Special case : if a function or class is called `index`, it is also mapped by
+default to the url _/_.
 
-If the class serves other urls than the class name (including _smart urls_,
-see below), set its attribute _url_ (a single url) or _urls_ (a list of urls):
+To specify another url (including _smart urls_, see below), set the attribute
+_url_ (a single url) or _urls_ (a list of urls):
 
 ```python
 class user:
 
     url = '/user/<id>'
-    
+
     def get(self):
         ...
 ```
@@ -132,7 +158,7 @@ or
 class user:
 
     urls = ['/user', '/user/<id>']
-    
+
     def post(self):
         ...
 ```
@@ -142,12 +168,17 @@ The url(s) can also be specified at the method level:
 ```python
 class user:
 
-    def get(self):
-        """Serves GET requests on url /user."""
-    
     def post(self):
         """Serves POST requests on urls /user and /user/<id>."""
     post.urls = ["/user", "/user/<id>"]
+```
+
+For a function:
+
+```python
+def menu(dialog):
+    return "Application menu"
+menu.url = "/mymenu"
 ```
 
 Smart URLs
@@ -158,22 +189,20 @@ available as one the request fields.
 For instance :
 
 ```python
-class show:
-
-    def get(self):
-        ...
-    get.url = "/show/<num>"
+function show(dialog):
+    ...
+show.url = "/show/<num>"
 ```
 
-The method `show.get()` is called for urls like _/show/76_, and the value 
+Function `show()` is called for urls like _/show/76_, and the value
 (the string "76") is available in the function body as
-`self.request.fields["num"]` (see the attributes of `self` below).
+`dialog.request.fields["num"]` (see the attributes of `dialog` below).
 
 Mapping control
 ---------------
-If the same tuple (HTTP method, url) is defined for 2 different methods, a
-`RoutingError` is raised, with a message giving the scripts and methods that
-define the same url.
+If the same tuple (HTTP method, url) is defined more than once, a
+`RoutingError` is raised, with a message giving the functions or classes that
+define the same route.
 
 
 Application attributes and methods
@@ -192,7 +221,7 @@ Application attributes and methods
 > _debug_ sets the debug mode. If `True`, the program periodically checks if
 > a change has been made to the modules used by the application (registered or
 > not) and located in the application directory, including the main module. If
-> the source code of one of these modules is changed, the application is 
+> the source code of one of these modules is changed, the application is
 > restarted.
 >
 > If an exception happens when restarting the application, the server doesn't
@@ -249,7 +278,7 @@ The attributes of _self.request_ are :
 
 `self.request.headers`
 
-> The http request headers sent by the user agent. Instance of 
+> The http request headers sent by the user agent. Instance of
 > [email.message.Message](https://docs.python.org/3/library/email.message.html).
 
 `self.request.method`
@@ -261,13 +290,13 @@ The attributes of _self.request_ are :
 > The requested url (without the query string).
 
 If the request is sent with the GET method, or the POST method with
-enctype or content-type set to "application/x-www-form-urlencoded" or 
+enctype or content-type set to "application/x-www-form-urlencoded" or
 "multipart/..." :
 
 `self.request.fields`
 
 > A dictionary for key/values received either in the query string, or in the
-> request body for POST requests, or in named arguments in _smart urls_ (see 
+> request body for POST requests, or in named arguments in _smart urls_ (see
 > above). Keys and values are strings, not bytes.
 >
 > For file uploads, the value associated with the key has the attributes
@@ -285,7 +314,7 @@ JSON content) :
 `self.request.raw`
 
 > Request body as bytes.
-  
+
 `self.response`
 -----------------
 The attributes that can be set to `self.response` are:
@@ -294,7 +323,7 @@ The attributes that can be set to `self.response` are:
 
 > The HTTP response headers. Instance of
 > [email.message.Message](https://docs.python.org/3/library/email.message.html).
-> To set the content type of the response, you can use the method 
+> To set the content type of the response, you can use the method
 > `set_type()`:
 >
 >     self.response.headers.set_type("text/plain")
@@ -322,7 +351,7 @@ other attributes of `self`
 
 `self.error`
 
-> Used to return an HTTP error code, eg 
+> Used to return an HTTP error code, eg
 >
 >  `return self.error(404)`.
 
@@ -335,5 +364,5 @@ other attributes of `self`
 `self.template(filename, **kw)`
 
 > If the templating engine [patrom](https://github.com/PierreQuentel/patrom)
-> is installed, renders the template file at the location 
+> is installed, renders the template file at the location
 > __templates/filename__ with the key/values in `kw`.
