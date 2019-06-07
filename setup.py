@@ -9,7 +9,7 @@ with open('README.rst', encoding='utf-8') as fobj:
 setup(
     name='bihan',
 
-    version='0.0.5',
+    version='0.0.6',
 
     description='Minimalist Python web framework',
     
