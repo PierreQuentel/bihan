@@ -209,7 +209,7 @@ class application(http.server.SimpleHTTPRequestHandler):
             else:
                 request.fields[key] = fields[key]
 
-        if request.method in ["POST", "PUT", "DELETE"]:
+        if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
 
             # Get encoding of request data
             charset = "iso-8859-1"
