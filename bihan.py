@@ -22,7 +22,7 @@ import types
 import wsgiref.simple_server
 
 http_methods = ["GET", "POST", "DELETE", "PUT", "OPTIONS", "HEAD", "TRACE",
-    "CONNECT"]
+    "CONNECT", "PATCH"]
 
 class HttpRedirection:
 
