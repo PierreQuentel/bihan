@@ -22,7 +22,7 @@ import types
 import wsgiref.simple_server
 
 http_methods = ["GET", "POST", "DELETE", "PUT", "OPTIONS", "HEAD", "TRACE",
-    "CONNECT", "PATCH"]
+    "CONNECT"]
 
 class HttpRedirection:
 
@@ -98,8 +98,7 @@ class application(http.server.SimpleHTTPRequestHandler):
     error = None
     registered = []
     root = os.getcwd()
-    static = {'/static': os.path.join(os.getcwd(), 'static')}
-
+    
     def __init__(self, environ, start_response):
 
         self.env = environ
@@ -496,6 +495,12 @@ class application(http.server.SimpleHTTPRequestHandler):
         # Split url in elements separated by /
         elts = urllib.parse.unquote(url).lstrip("/").split("/")
 
+        # If last element has an extension, treat it as a file
+        if os.path.splitext(elts[-1])[1]:
+            path = os.path.join(self.root, *elts)
+            if os.path.exists(path):
+                return 'file', path
+
         target, patterns = None, []
         for (_method, pattern), obj in application.routes.items():
             if _method != method:
@@ -511,11 +516,6 @@ class application(http.server.SimpleHTTPRequestHandler):
 
         if target is not None:
             return 'func', target
-
-        # try a path in static directories
-        head = '/' + elts[0]
-        if head in self.static:
-            return 'file', os.path.join(self.static[head], *elts[1:])
 
         return None, None
 
@@ -607,3 +607,4 @@ class application(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     application.run(port=8000)
+

@@ -61,6 +61,12 @@ _http://localhost:8000/hello_ in the browser address bar, it shows the
 
 URL dispatching
 ===============
+Static files
+------------
+If a request ends with an extension (eg `.html`, `.css`, etc.) the application
+serves the content of the file at the location relatively to the application
+root, or returns a 404 error.
+
 Registered modules
 ------------------
 bihan serves requests using the functions and classes defined in the
@@ -214,6 +220,7 @@ Function `show()` is called for urls like _/show/76_, and the value
 (the string "76") is available in the function body as
 `dialog.request.fields["num"]` (see the attributes of `dialog` below).
 
+
 Mapping control
 ---------------
 If the same tuple (HTTP method, url) is defined more than once, a
@@ -242,15 +249,6 @@ Application attributes and methods
 > If an exception happens when restarting the application, the server doesn't
 > crash, but the exception is stored and will be shown as the result of the
 > next request.
-
-
-`application.static`
-
-> A dictionary mapping paths of the form _/path_ to directories in the server
-> file system. It it used to serve static files (HTML pages, images,
-> Javascript programs, etc.). By default, the dictionary maps _/static_ to the
-> folder __static__ in the server directory.
-
 
 Response body
 =============
