@@ -8,7 +8,7 @@ import re
 import io
 import traceback
 import datetime
-import cgi
+import old_cgi as cgi
 import urllib.parse
 import http.cookies
 import http.server
@@ -98,7 +98,7 @@ class application(http.server.SimpleHTTPRequestHandler):
     error = None
     registered = []
     root = os.getcwd()
-    
+
     def __init__(self, environ, start_response):
 
         self.env = environ
@@ -107,7 +107,7 @@ class application(http.server.SimpleHTTPRequestHandler):
         # Set attributes for logging
         path = self.env["PATH_INFO"]
         if self.env["QUERY_STRING"]:
-            path += "?"+self.env["QUERY_STRING"]
+            path += "?" + self.env["QUERY_STRING"]
 
         self.request_version = self.env["SERVER_PROTOCOL"]
         self.requestline = "{} {} {}".format(self.env["REQUEST_METHOD"],
@@ -209,7 +209,6 @@ class application(http.server.SimpleHTTPRequestHandler):
                 request.fields[key] = fields[key]
 
         if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
-
             # Get encoding of request data
             charset = "iso-8859-1"
             for key in request.headers:
@@ -223,7 +222,7 @@ class application(http.server.SimpleHTTPRequestHandler):
 
             has_keys = True
             if "Content-Type" in request.headers:
-                ctype, _ = cgi.parse_header(request.headers["Content-Type"])
+                ctype = request.headers["Content-Type"]
                 has_keys = ctype == "application/x-www-form-urlencoded" or \
                     ctype.startswith("multipart/")
 
@@ -500,6 +499,8 @@ class application(http.server.SimpleHTTPRequestHandler):
             path = os.path.join(self.root, *elts)
             if os.path.exists(path):
                 return 'file', path
+            else:
+                return None, None
 
         target, patterns = None, []
         for (_method, pattern), obj in application.routes.items():
@@ -607,4 +608,3 @@ class application(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     application.run(port=8000)
-
