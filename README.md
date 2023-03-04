@@ -22,7 +22,7 @@ it that I don't like or understand:
   exception traceback
 
 - on debug mode, when there is a syntax error in one of the scripts, the
-  built-in server crashes when I save the file
+  built-in server crashes when saving the file
 
 bihan is a very lightweight WSGI framework, with a single file like Bottle.
 Its design principles are:
