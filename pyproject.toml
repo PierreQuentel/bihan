@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bihan"
+version = "0.9"
+authors = [
+  { name="Pierre Quentel", email="pierre.quentel@gmail.com" },
+]
+description = "Lightweight Python web framework"
+requires-python = ">=3.4"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Source" = "https://github.com/PierreQuentel/bihan"
+"Bug Tracker" = "https://github.com/PierreQuentel/bihan/issues"
+
