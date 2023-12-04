@@ -8,7 +8,7 @@ import re
 import io
 import traceback
 import datetime
-import old_cgi as cgi
+from . import old_cgi as cgi
 import urllib.parse
 import http.cookies
 import http.server
