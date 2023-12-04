@@ -1,3 +1,14 @@
+#! /usr/local/bin/python
+
+# NOTE: the above "/usr/local/bin/python" is NOT a mistake.  It is
+# intentionally NOT "/usr/bin/env python".  On many systems
+# (e.g. Solaris), /usr/local/bin is not in $PATH as passed to CGI
+# scripts, and /usr/local/bin is the default directory where Python is
+# installed, so /usr/bin/env would be unable to find python.  Granted,
+# binary installations by Linux vendors often install Python in
+# /usr/bin.  So let those vendors patch cgi.py to match their choice
+# of installation.
+
 """Support module for CGI (Common Gateway Interface) scripts.
 
 This module defines a number of utilities for use by CGI scripts
@@ -15,9 +26,11 @@ meaning the request size is unlimited.
 # Michael McLay started this module.  Steve Majewski changed the
 # interface to SvFormContentDict and FormContentDict.  The multipart
 # parsing was inspired by code submitted by Andreas Paepcke.  Guido van
-# Rossum rewrote, reformatted and documented the module.
+# Rossum rewrote, reformatted and documented the module and is currently
+# responsible for its maintenance.
 #
-# Pierre Quentel rewrote the module for Python 3.2
+
+__version__ = "2.6"
 
 
 # Imports
@@ -39,6 +52,7 @@ __all__ = ["MiniFieldStorage", "FieldStorage", "parse", "parse_multipart",
            "parse_header", "test", "print_exception", "print_environ",
            "print_form", "print_directory", "print_arguments",
            "print_environ_usage"]
+
 
 # Logging support
 # ===============
